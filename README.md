@@ -344,17 +344,8 @@ This project is designed specifically for the **Microsoft Elevate Azure Internsh
 - [x] **Smart Recommendations Engine** - AI-driven actionable insights
 - [x] **Anomaly Detection Dashboard** - Proactive monitoring with severity classification
 
-### Planned Enhancements
-- [ ] LSTM model for deep time-series forecasting
-- [ ] Real-time weather API integration (OpenWeatherMap)
-- [ ] Power BI dashboard for advanced analytics
-- [ ] Multi-location support for city-wide forecasting
-- [ ] Automatic model retraining pipeline
-- [ ] Mobile app (React Native)
-- [ ] Load balancing recommendations
-- [ ] Cost optimization suggestions
 
----
+
 
 ## 📚 Technologies Used
 
@@ -386,7 +377,7 @@ This project is created for educational purposes as part of the MS Elevate capst
 
 ## 👨‍💻 Author
 
-**Raju**  
+**PrasadnRaju**  
 MS Elevate Azure Internship  
 GitHub: [@Raju-09](https://github.com/Raju-09)  
 
