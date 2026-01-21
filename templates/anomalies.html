@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Anomaly detection dashboard for electricity demand monitoring">
+    <title>Anomaly Detection - PowerForecast AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">
+                ⚡ PowerForecast AI
+            </div>
+            <nav>
+                <a href="/">Home</a>
+                <a href="/predict">Predict</a>
+                <a href="/forecast">Forecast</a>
+                <a href="/anomalies">Anomalies</a>
+                <a href="/dashboard">Dashboard</a>
+            </nav>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="container" style="padding: 4rem 0 2rem;">
+        <h1 class="section-title">🔍 Anomaly Detection Dashboard</h1>
+        <p
+            style="text-align: center; color: var(--text-secondary); font-size: 1.2rem; margin-top: -2rem; margin-bottom: 3rem;">
+            Proactive monitoring and detection of unusual demand patterns
+        </p>
+    </section>
+
+    <!-- Detection Button -->
+    <section class="container">
+        <div class="card" style="text-align: center;">
+            <button id="detectBtn" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 3rem;">
+                🔍 Scan for Anomalies
+            </button>
+            <p style="margin-top: 1rem; color: var(--text-muted);">Analyze historical data using statistical methods</p>
+        </div>
+    </section>
+
+    <!-- Loading Indicator -->
+    <div id="loadingIndicator" style="display: none; text-align: center; margin: 3rem 0;">
+        <div class="loading"></div>
+        <p style="color: var(--text-secondary); margin-top: 1rem;">Analyzing demand patterns...</p>
+    </div>
+
+    <!-- Results Section -->
+    <section class="container mt-3" id="resultsSection" style="display: none;">
+        <!-- Summary Stats -->
+        <div class="grid grid-4">
+            <div class="card"
+                style="text-align: center; background: linear-gradient(135deg, rgba(255, 0, 0, 0.1), rgba(255, 100, 100, 0.1));">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🚨</div>
+                <div id="criticalCount" style="font-size: 2.5rem; font-weight: 900; color: #FF0066;">--</div>
+                <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Critical</div>
+            </div>
+
+            <div class="card"
+                style="text-align: center; background: linear-gradient(135deg, rgba(255, 165, 0, 0.1), rgba(255, 200, 0, 0.1));">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
+                <div id="highCount" style="font-size: 2.5rem; font-weight: 900; color: #FFA500;">--</div>
+                <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">High</div>
+            </div>
+
+            <div class="card"
+                style="text-align: center; background: linear-gradient(135deg, rgba(255, 255, 0, 0.1), rgba(200, 200, 0, 0.1));">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">⦿</div>
+                <div id="mediumCount" style="font-size: 2.5rem; font-weight: 900; color: #FFD700;">--</div>
+                <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Medium</div>
+            </div>
+
+            <div class="card"
+                style="text-align: center; background: linear-gradient(135deg, rgba(0, 245, 255, 0.1), rgba(0, 200, 255, 0.1));">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📊</div>
+                <div id="totalCount" style="font-size: 2.5rem; font-weight: 900; color: var(--electric-cyan);">--</div>
+                <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Total Anomalies</div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mt-3">
+            <h3 style="margin-bottom: 1.5rem;">🔧 Filters</h3>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <button class="filter-btn active" data-filter="all">All</button>
+                <button class="filter-btn" data-filter="critical">Critical</button>
+                <button class="filter-btn" data-filter="high">High</button>
+                <button class="filter-btn" data-filter="medium">Medium</button>
+                <button class="filter-btn" data-filter="spike">Spikes Only</button>
+                <button class="filter-btn" data-filter="drop">Drops Only</button>
+            </div>
+        </div>
+
+        <!-- Anomaly Timeline -->
+        <div class="card mt-3">
+            <h3 style="margin-bottom: 2rem;">📅 Anomaly Timeline</h3>
+            <div id="anomalyList"></div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 PowerForecast AI | MS Elevate Capstone Project</p>
+            <p style="margin-top: 0.5rem;">Proactive Anomaly Detection & Monitoring</p>
+        </div>
+    </footer>
+
+    <style>
+        .filter-btn {
+            padding: 0.6rem 1.2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .filter-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--electric-cyan);
+        }
+
+        .filter-btn.active {
+            background: var(--gradient-primary);
+            border-color: var(--electric-cyan);
+            color: white;
+            font-weight: 600;
+        }
+
+        .anomaly-card {
+            padding: 1.5rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 4px solid;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .anomaly-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateX(5px);
+        }
+
+        .anomaly-card.critical {
+            border-color: #FF0066;
+        }
+
+        .anomaly-card.high {
+            border-color: #FFA500;
+        }
+
+        .anomaly-card.medium {
+            border-color: #FFD700;
+        }
+
+        .anomaly-card.low {
+            border-color: #00F5FF;
+        }
+
+        .severity-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .severity-badge.critical {
+            background: rgba(255, 0, 102, 0.2);
+            color: #FF0066;
+        }
+
+        .severity-badge.high {
+            background: rgba(255, 165, 0, 0.2);
+            color: #FFA500;
+        }
+
+        .severity-badge.medium {
+            background: rgba(255, 215, 0, 0.2);
+            color: #FFD700;
+        }
+
+        .severity-badge.low {
+            background: rgba(0, 245, 255, 0.2);
+            color: #00F5FF;
+        }
+
+        .type-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .type-badge.spike {
+            background: rgba(255, 0, 0, 0.2);
+            color: #FF4444;
+        }
+
+        .type-badge.drop {
+            background: rgba(0, 200, 255, 0.2);
+            color: #00C8FF;
+        }
+    </style>
+
+    <script>
+        let allAnomalies = [];
+        let currentFilter = 'all';
+
+        // Detect anomalies
+        document.getElementById('detectBtn').addEventListener('click', async () => {
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('resultsSection').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/detect-anomalies', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    allAnomalies = data.anomalies;
+                    displayResults(data);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error detecting anomalies: ' + error.message);
+            } finally {
+                document.getElementById('loadingIndicator').style.display = 'none';
+            }
+        });
+
+        function displayResults(data) {
+            // Update stats
+            document.getElementById('criticalCount').textContent = data.critical_count;
+            document.getElementById('highCount').textContent = data.high_count;
+
+            const mediumCount = data.anomalies.filter(a => a.severity === 'medium').length;
+            document.getElementById('mediumCount').textContent = mediumCount;
+
+            document.getElementById('totalCount').textContent = data.total_anomalies;
+
+            // Display filtered anomalies
+            filterAndDisplayAnomalies();
+
+            // Show results
+            document.getElementById('resultsSection').style.display = 'block';
+            document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function filterAndDisplayAnomalies() {
+            let filtered = allAnomalies;
+
+            if (currentFilter !== 'all') {
+                if (['critical', 'high', 'medium', 'low'].includes(currentFilter)) {
+                    filtered = allAnomalies.filter(a => a.severity === currentFilter);
+                } else if (['spike', 'drop'].includes(currentFilter)) {
+                    filtered = allAnomalies.filter(a => a.type === currentFilter);
+                }
+            }
+
+            let html = '';
+
+            if (filtered.length === 0) {
+                html = '<p style="text-align: center; color: var(--text-muted); padding: 3rem;">No anomalies found with current filter.</p>';
+            } else {
+                filtered.forEach(anomaly => {
+                    const severityClass = anomaly.severity;
+                    const typeIcon = anomaly.type === 'spike' ? '📈' : '📉';
+                    const deviationSign = anomaly.deviation_percent > 0 ? '+' : '';
+
+                    html += `
+                        <div class="anomaly-card ${severityClass}">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                                <div>
+                                    <span class="severity-badge ${severityClass}">${severityClass}</span>
+                                    <span class="type-badge ${anomaly.type}" style="margin-left: 0.5rem;">${typeIcon} ${anomaly.type}</span>
+                                </div>
+                                <div style="text-align: right; color: var(--text-muted); font-size: 0.9rem;">
+                                    ${anomaly.timestamp}
+                                </div>
+                            </div>
+                            
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+                                <div>
+                                    <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Actual Demand</div>
+                                    <div style="font-size: 1.3rem; font-weight: 700; color: ${anomaly.type === 'spike' ? '#FF4444' : '#00C8FF'};">
+                                        ${anomaly.actual_demand.toLocaleString()} kWh
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Expected Demand</div>
+                                    <div style="font-size: 1.3rem; font-weight: 700; color: var(--text-secondary);">
+                                        ${anomaly.expected_demand.toLocaleString()} kWh
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.25rem;">Deviation</div>
+                                    <div style="font-size: 1.3rem; font-weight: 700; color: ${Math.abs(anomaly.deviation_percent) > 20 ? '#FF0066' : '#FFA500'};">
+                                        ${deviationSign}${anomaly.deviation_percent.toFixed(1)}%
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="padding: 1rem; background: rgba(0, 0, 0, 0.2); border-radius: 6px;">
+                                <div style="color: var(--electric-cyan); font-weight: 600; margin-bottom: 0.5rem;">💡 Probable Cause:</div>
+                                <div style="color: var(--text-secondary);">${anomaly.cause}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            document.getElementById('anomalyList').innerHTML = html;
+        }
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                filterAndDisplayAnomalies();
+            });
+        });
+    </script>
+</body>
+
+</html>

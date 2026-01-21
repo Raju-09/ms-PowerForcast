@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Multi-step ahead electricity demand forecasting with confidence intervals">
+    <title>Multi-Step Forecast - PowerForecast AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">
+                ⚡ PowerForecast AI
+            </div>
+            <nav>
+                <a href="/">Home</a>
+                <a href="/predict">Predict</a>
+                <a href="/forecast">Forecast</a>
+                <a href="/anomalies">Anomalies</a>
+                <a href="/dashboard">Dashboard</a>
+            </nav>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="container" style="padding: 4rem 0 2rem;">
+        <h1 class="section-title">📈 Multi-Step Ahead Forecasting</h1>
+        <p
+            style="text-align: center; color: var(--text-secondary); font-size: 1.2rem; margin-top: -2rem; margin-bottom: 3rem;">
+            Predict electricity demand for the next 24, 48, or 72 hours with confidence intervals
+        </p>
+    </section>
+
+    <!-- Forecast Input Form -->
+    <section class="container">
+        <div class="card">
+            <h3 style="margin-bottom: 2rem;">⚙️ Forecast Parameters</h3>
+            <form id="forecastForm"
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+                <div>
+                    <label for="date"
+                        style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Start
+                        Date</label>
+                    <input type="date" id="date" required
+                        style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                </div>
+
+                <div>
+                    <label for="hour"
+                        style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Start
+                        Hour</label>
+                    <input type="number" id="hour" min="0" max="23" value="0" required
+                        style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                </div>
+
+                <div>
+                    <label for="temperature"
+                        style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Base
+                        Temperature (°C)</label>
+                    <input type="number" id="temperature" step="0.1" value="25" required
+                        style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                </div>
+
+                <div>
+                    <label for="humidity"
+                        style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Base
+                        Humidity (%)</label>
+                    <input type="number" id="humidity" min="0" max="100" value="60" required
+                        style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                </div>
+
+                <div style="grid-column: 1 / -1;">
+                    <label
+                        style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">Forecast
+                        Horizon</label>
+                    <div style="display: flex; gap: 1rem;">
+                        <button type="button" class="horizon-btn active" data-hours="24">24 Hours</button>
+                        <button type="button" class="horizon-btn" data-hours="48">48 Hours</button>
+                        <button type="button" class="horizon-btn" data-hours="72">72 Hours</button>
+                    </div>
+                </div>
+
+                <div style="grid-column: 1 / -1;">
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                        Generate Forecast
+                    </button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <!-- Loading Indicator -->
+    <div id="loadingIndicator" style="display: none; text-align: center; margin: 3rem 0;">
+        <div class="loading"></div>
+        <p style="color: var(--text-secondary); margin-top: 1rem;">Generating multi-step forecast...</p>
+    </div>
+
+    <!-- Forecast Results -->
+    <section class="container mt-3" id="resultsSection" style="display: none;">
+        <!-- Stats Cards -->
+        <div class="grid grid-4" style="margin-bottom: 2rem;">
+            <div class="card"
+                style="text-align: center; background: linear-gradient(135deg, rgba(0, 245, 255, 0.1), rgba(0, 102, 255, 0.1));">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📊</div>
+                <div id="avgForecast"
+                    style="font-size: 2rem; font-weight: 900; background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                    --</div>
+                <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Avg Demand</div>
+            </div>
+
+            <div class="card"
+                style="text-align: center; background: linear-gradient(135deg, rgba(255, 0, 110, 0.1), rgba(247, 37, 133, 0.1));">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚡</div>
+                <div id="peakForecast"
+                    style="font-size: 2rem; font-weight: 900; background: var(--gradient-secondary); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                    --</div>
+                <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Peak Demand</div>
+            </div>
+
+            <div class="card"
+                style="text-align: center; background: linear-gradient(135deg, rgba(6, 255, 165, 0.1), rgba(0, 245, 255, 0.1));">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🌙</div>
+                <div id="minForecast"
+                    style="font-size: 2rem; font-weight: 900; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                    --</div>
+                <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Min Demand</div>
+            </div>
+
+            <div class="card"
+                style="text-align: center; background: linear-gradient(135deg, rgba(255, 214, 10, 0.1), rgba(255, 165, 0, 0.1));">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎯</div>
+                <div id="peakHours" style="font-size: 2rem; font-weight: 900; color: var(--electric-cyan);">--</div>
+                <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">Peak Hours</div>
+            </div>
+        </div>
+
+        <!-- Forecast Chart -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h3>📈 Demand Forecast with Confidence Intervals</h3>
+                <button id="exportBtn" class="btn btn-outline" style="font-size: 0.9rem; padding: 0.5rem 1rem;">
+                    Export CSV
+                </button>
+            </div>
+            <canvas id="forecastChart" style="max-height: 400px;"></canvas>
+            <p style="margin-top: 1.5rem; color: var(--text-muted); font-size: 0.9rem; text-align: center;">
+                ⚠️ Note: Forecast accuracy decreases with time horizon. Use shorter forecasts for critical decisions.
+            </p>
+        </div>
+
+        <!-- Data Table -->
+        <div class="card mt-3">
+            <h3 style="margin-bottom: 1.5rem;">📋 Detailed Forecast Data</h3>
+            <div id="forecastTable" style="overflow-x: auto;"></div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 PowerForecast AI | MS Elevate Capstone Project</p>
+            <p style="margin-top: 0.5rem;">Advanced Multi-Step Forecasting with ML</p>
+        </div>
+    </footer>
+
+    <style>
+        .horizon-btn {
+            flex: 1;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .horizon-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--electric-cyan);
+        }
+
+        .horizon-btn.active {
+            background: var(--gradient-primary);
+            border-color: var(--electric-cyan);
+            color: white;
+            font-weight: 600;
+        }
+
+        input[type="date"],
+        input[type="number"] {
+            font-family: inherit;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+        }
+    </style>
+
+    <script>
+        let selectedHours = 24;
+        let forecastData = null;
+        let forecastChart = null;
+
+        // Set default date to today
+        document.getElementById('date').valueAsDate = new Date();
+
+        // Horizon button handlers
+        document.querySelectorAll('.horizon-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.horizon-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedHours = parseInt(btn.dataset.hours);
+            });
+        });
+
+        // Form submission
+        document.getElementById('forecastForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = {
+                date: document.getElementById('date').value,
+                hour: parseInt(document.getElementById('hour').value),
+                hours: selectedHours,
+                temperature: parseFloat(document.getElementById('temperature').value),
+                humidity: parseFloat(document.getElementById('humidity').value)
+            };
+
+            // Show loading
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('resultsSection').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/forecast-multi', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    forecastData = data;
+                    displayForecast(data);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error generating forecast: ' + error.message);
+            } finally {
+                document.getElementById('loadingIndicator').style.display = 'none';
+            }
+        });
+
+        function displayForecast(data) {
+            const predictions = data.predictions;
+
+            // Calculate stats
+            const demands = predictions.map(p => p.prediction);
+            const avgDemand = demands.reduce((a, b) => a + b, 0) / demands.length;
+            const peakDemand = Math.max(...demands);
+            const minDemand = Math.min(...demands);
+            const peakHoursCount = predictions.filter(p => p.is_peak).length;
+
+            // Update stats cards
+            document.getElementById('avgForecast').textContent = Math.round(avgDemand).toLocaleString() + ' kWh';
+            document.getElementById('peakForecast').textContent = Math.round(peakDemand).toLocaleString() + ' kWh';
+            document.getElementById('minForecast').textContent = Math.round(minDemand).toLocaleString() + ' kWh';
+            document.getElementById('peakHours').textContent = peakHoursCount;
+
+            // Create chart
+            createForecastChart(predictions);
+
+            // Create table
+            createForecastTable(predictions);
+
+            // Show results
+            document.getElementById('resultsSection').style.display = 'block';
+            document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function createForecastChart(predictions) {
+            const ctx = document.getElementById('forecastChart').getContext('2d');
+
+            // Destroy existing chart
+            if (forecastChart) {
+                forecastChart.destroy();
+            }
+
+            const labels = predictions.map(p => p.timestamp.split(' ')[1].substring(0, 5));
+            const demandData = predictions.map(p => p.prediction);
+            const upperBounds = predictions.map(p => p.upper_bound);
+            const lowerBounds = predictions.map(p => p.lower_bound);
+
+            forecastChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Predicted Demand',
+                            data: demandData,
+                            borderColor: '#00F5FF',
+                            backgroundColor: 'rgba(0, 245, 255, 0.1)',
+                            borderWidth: 3,
+                            fill: false,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Upper Confidence',
+                            data: upperBounds,
+                            borderColor: 'rgba(255, 0, 110, 0.5)',
+                            backgroundColor: 'rgba(255, 0, 110, 0.05)',
+                            borderWidth: 1,
+                            borderDash: [5, 5],
+                            fill: '+1',
+                            tension: 0.4,
+                            pointRadius: 0
+                        },
+                        {
+                            label: 'Lower Confidence',
+                            data: lowerBounds,
+                            borderColor: 'rgba(255, 0, 110, 0.5)',
+                            backgroundColor: 'rgba(255, 0, 110, 0.1)',
+                            borderWidth: 1,
+                            borderDash: [5, 5],
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#94A3B8',
+                                usePointStyle: true,
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function (context) {
+                                    return context.dataset.label + ': ' + context.parsed.y.toFixed(0) + ' kWh';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: '#94A3B8',
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94A3B8',
+                                callback: function (value) {
+                                    return value.toLocaleString() + ' kWh';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createForecastTable(predictions) {
+            let html = `
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: rgba(255, 255, 255, 0.05); border-bottom: 2px solid var(--glass-border);">
+                            <th style="padding: 1rem; text-align: left; color: var(--electric-cyan);">Time</th>
+                            <th style="padding: 1rem; text-align: right; color: var(--electric-cyan);">Demand (kWh)</th>
+                            <th style="padding: 1rem; text-align: right; color: var(--electric-cyan);">Range</th>
+                            <th style="padding: 1rem; text-align: center; color: var(--electric-cyan);">Peak</th>
+                            <th style="padding: 1rem; text-align: right; color: var(--electric-cyan);">Temp (°C)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            predictions.forEach((p, i) => {
+                const rowClass = i % 2 === 0 ? 'background: rgba(255, 255, 255, 0.02);' : '';
+                const peakBadge = p.is_peak ?
+                    '<span style="background: var(--gradient-secondary); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem;">⚡ Peak</span>' :
+                    '<span style="color: var(--text-muted); font-size: 0.85rem;">–</span>';
+
+                html += `
+                    <tr style="${rowClass}">
+                        <td style="padding: 0.75rem; color: var(--text-secondary);">${p.timestamp}</td>
+                        <td style="padding: 0.75rem; text-align: right; font-weight: 600; color: white;">${p.prediction.toLocaleString()}</td>
+                        <td style="padding: 0.75rem; text-align: right; color: var(--text-muted); font-size: 0.9rem;">${p.lower_bound.toLocaleString()} - ${p.upper_bound.toLocaleString()}</td>
+                        <td style="padding: 0.75rem; text-align: center;">${peakBadge}</td>
+                        <td style="padding: 0.75rem; text-align: right; color: var(--text-secondary);">${p.temperature.toFixed(1)}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('forecastTable').innerHTML = html;
+        }
+
+        // Export to CSV
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            if (!forecastData) return;
+
+            let csv = 'Timestamp,Hour,Demand (kWh),Lower Bound,Upper Bound,Is Peak,Temperature,Humidity\n';
+            forecastData.predictions.forEach(p => {
+                csv += `${p.timestamp},${p.hour},${p.prediction},${p.lower_bound},${p.upper_bound},${p.is_peak},${p.temperature},${p.humidity}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `forecast_${selectedHours}h_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Professional analytics dashboard for electricity demand forecasting">
+    <title>Analytics Dashboard - PowerForecast AI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="logo">
+                ⚡ PowerForecast AI
+            </div>
+            <nav>
+                <a href="/">Home</a>
+                <a href="/predict">Predict</a>
+                <a href="/forecast">Forecast</a>
+                <a href="/anomalies">Anomalies</a>
+                <a href="/dashboard">Dashboard</a>
+            </nav>
+        </div>
+    </nav>
+
+    <!-- Dashboard Header -->
+    <section class="container" style="padding: 4rem 0 2rem;">
+        <h1 class="section-title">Professional Analytics Dashboard</h1>
+        <p
+            style="text-align: center; color: var(--text-secondary); font-size: 1.2rem; margin-top: -2rem; margin-bottom: 3rem;">
+            Real-time insights powered by advanced ML with 98%+ accuracy
+        </p>
+    </section>
+
+    <!-- Model Performance Stats -->
+    <section class="container">
+        <div class="grid grid-4">
+            <div class="card"
+                style="text-align: center; background: linear-gradient(135deg, rgba(0, 245, 255, 0.1), rgba(0, 102, 255, 0.1));">
+                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🎯</div>
+                <div id="r2Score"
+                    style="font-size: 2.5rem; font-weight: 900; background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem;">
+                    --</div>
+                <div style="color: var(--text-muted); font-size: 0.9rem;">R² Accuracy</div>
+            </div>
+
+            <div class="card"
+                style="text-align: center; background: linear-gradient(135deg, rgba(6, 255, 165, 0.1), rgba(0, 245, 255, 0.1));">
+                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📊</div>
+                <div id="totalRecords"
+                    style="font-size: 2.5rem; font-weight: 900; background: var(--gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem;">
+                    --</div>
+                <div style="color: var(--text-muted); font-size: 0.9rem;">Training Records</div>
+            </div>
+
+            <div class="card"
+                style="text-align: center; background: linear-gradient(135deg, rgba(255, 0, 110, 0.1), rgba(247, 37, 133, 0.1));">
+                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⚡</div>
+                <div id="peakDemand"
+                    style="font-size: 2.5rem; font-weight: 900; background: var(--gradient-secondary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem;">
+                    --</div>
+                <div style="color: var(--text-muted); font-size: 0.9rem;">Peak Demand (kWh)</div>
+            </div>
+
+            <div class="card"
+                style="text-align: center; background: linear-gradient(135deg, rgba(255, 214, 10, 0.1), rgba(255, 165, 0, 0.1));">
+                <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🧠</div>
+                <div id="featureCount"
+                    style="font-size: 2.5rem; font-weight: 900; background: linear-gradient(135deg, #FFD60A, #FFA500); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem;">
+                    --</div>
+                <div style="color: var(--text-muted); font-size: 0.9rem;">ML Features</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Dashboard Content -->
+    <section class="container mt-3">
+        <div class="grid grid-2">
+            <!-- Feature Importance Chart -->
+            <div class="card">
+                <h3 style="margin-bottom: 2rem;">📊 Feature Importance Analysis</h3>
+                <canvas id="featureImportanceChart"></canvas>
+                <p style="margin-top: 1.5rem; color: var(--text-muted); font-size: 0.9rem; text-align: center;">
+                    Top features driving the prediction model
+                </p>
+            </div>
+
+            <!-- Model Information -->
+            <div class="card">
+                <h3 style="margin-bottom: 2rem;">🤖 Model Information</h3>
+                <div id="modelInfo" style="color: var(--text-secondary); line-height: 2.2;">
+                    <div class="loading" style="margin: 3rem auto; display: block;"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Professional Features Highlight -->
+    <section class="container mt-3">
+        <div class="card"
+            style="background: linear-gradient(135deg, rgba(0, 245, 255, 0.05), rgba(123, 44, 191, 0.05));">
+            <h3 style="text-align: center; margin-bottom: 2.5rem;">⚡ Professional Features Implemented</h3>
+            <div class="grid grid-3">
+                <div
+                    style="padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border-radius: 12px; border: 1px solid var(--glass-border);">
+                    <h4 style="color: var(--electric-cyan); margin-bottom: 1rem; font-size: 1.1rem;">🕐 Time-Series
+                        Intelligence</h4>
+                    <ul style="color: var(--text-secondary); list-style: none; padding: 0;">
+                        <li style="padding: 0.4rem 0;">✓ Lag 1 hour</li>
+                        <li style="padding: 0.4rem 0;">✓ Lag 24 hours</li>
+                        <li style="padding: 0.4rem 0;">✓ No data leakage</li>
+                    </ul>
+                </div>
+
+                <div
+                    style="padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border-radius: 12px; border: 1px solid var(--glass-border);">
+                    <h4 style="color: var(--electric-cyan); margin-bottom: 1rem; font-size: 1.1rem;">📈 Trend Detection
+                    </h4>
+                    <ul style="color: var(--text-secondary); list-style: none; padding: 0;">
+                        <li style="padding: 0.4rem 0;">✓ 24h rolling average</li>
+                        <li style="padding: 0.4rem 0;">✓ 7-day rolling average</li>
+                        <li style="padding: 0.4rem 0;">✓ Noise smoothing</li>
+                    </ul>
+                </div>
+
+                <div
+                    style="padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border-radius: 12px; border: 1px solid var(--glass-border);">
+                    <h4 style="color: var(--electric-cyan); margin-bottom: 1rem; font-size: 1.1rem;">⚡ Peak Detection
+                    </h4>
+                    <ul style="color: var(--text-secondary); list-style: none; padding: 0;">
+                        <li style="padding: 0.4rem 0;">✓ Morning peak (6-10 AM)</li>
+                        <li style="padding: 0.4rem 0;">✓ Evening peak (6-11 PM)</li>
+                        <li style="padding: 0.4rem 0;">✓ Dynamic pricing ready</li>
+                    </ul>
+                </div>
+
+                <div
+                    style="padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border-radius: 12px; border: 1px solid var(--glass-border);">
+                    <h4 style="color: var(--electric-cyan); margin-bottom: 1rem; font-size: 1.1rem;">📅 Event Analysis
+                    </h4>
+                    <ul style="color: var(--text-secondary); list-style: none; padding: 0;">
+                        <li style="padding: 0.4rem 0;">✓ Indian holidays</li>
+                        <li style="padding: 0.4rem 0;">✓ Weekend patterns</li>
+                        <li style="padding: 0.4rem 0;">✓ Demand reduction</li>
+                    </ul>
+                </div>
+
+                <div
+                    style="padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border-radius: 12px; border: 1px solid var(--glass-border);">
+                    <h4 style="color: var(--electric-cyan); margin-bottom: 1rem; font-size: 1.1rem;">🌡️ Temperature
+                        Index</h4>
+                    <ul style="color: var(--text-secondary); list-style: none; padding: 0;">
+                        <li style="padding: 0.4rem 0;">✓ Cooling index (>24°C)</li>
+                        <li style="padding: 0.4rem 0;">✓ Heating index (<18°C)< /li>
+                        <li style="padding: 0.4rem 0;">✓ Behavior modeling</li>
+                    </ul>
+                </div>
+
+                <div
+                    style="padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border-radius: 12px; border: 1px solid var(--glass-border);">
+                    <h4 style="color: var(--electric-cyan); margin-bottom: 1rem; font-size: 1.1rem;">🎯 Validation</h4>
+                    <ul style="color: var(--text-secondary); list-style: none; padding: 0;">
+                        <li style="padding: 0.4rem 0;">✓ Time-based split</li>
+                        <li style="padding: 0.4rem 0;">✓ Real-world simulation</li>
+                        <li style="padding: 0.4rem 0;">✓ Production-ready</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Demand Statistics -->
+    <section class="container mt-3 mb-4">
+        <div class="card">
+            <h3 style="margin-bottom: 2rem;">📊 Demand Statistics Overview</h3>
+            <div class="grid grid-3">
+                <div style="text-align: center; padding: 1.5rem;">
+                    <div
+                        style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px;">
+                        Average Demand</div>
+                    <div id="avgDemand" style="font-size: 2.2rem; font-weight: 800; color: var(--electric-cyan);">--
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.3rem;">kWh</div>
+                </div>
+
+                <div style="text-align: center; padding: 1.5rem;">
+                    <div
+                        style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px;">
+                        Peak Hour Average</div>
+                    <div id="peakAvg" style="font-size: 2.2rem; font-weight: 800; color: var(--electric-pink);">--</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.3rem;">kWh</div>
+                </div>
+
+                <div style="text-align: center; padding: 1.5rem;">
+                    <div
+                        style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px;">
+                        Off-Peak Average</div>
+                    <div id="offpeakAvg" style="font-size: 2.2rem; font-weight: 800; color: var(--electric-green);">--
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.3rem;">kWh</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Smart Recommendations -->
+    <section class="container mt-3 mb-4">
+        <div class="card">
+            <h3 style="margin-bottom: 2rem;">💡 Smart Recommendations</h3>
+            <div id="recommendationsContainer">
+                <p style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                    Make a prediction to see intelligent recommendations...
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 PowerForecast AI | MS Elevate Capstone Project</p>
+            <p style="margin-top: 0.5rem;">Industry-Grade ML with Time-Series Intelligence</p>
+        </div>
+    </footer>
+
+    <script>
+        // Fetch and display model info
+        async function loadDashboard() {
+            try {
+                // Load model info
+                const modelResponse = await fetch('/api/model-info');
+                const modelData = await modelResponse.json();
+
+                if (modelData.success) {
+                    // Update stats cards
+                    document.getElementById('r2Score').textContent =
+                        (modelData.model.r2_score * 100).toFixed(1) + '%';
+                    document.getElementById('totalRecords').textContent =
+                        modelData.dataset.total_records.toLocaleString();
+                    document.getElementById('peakDemand').textContent =
+                        Math.round(modelData.demand_statistics.overall.max).toLocaleString();
+                    document.getElementById('featureCount').textContent =
+                        modelData.model.features_count;
+
+                    // Update demand statistics
+                    document.getElementById('avgDemand').textContent =
+                        Math.round(modelData.demand_statistics.overall.mean).toLocaleString();
+                    document.getElementById('peakAvg').textContent =
+                        Math.round(modelData.demand_statistics.peak_hours.mean).toLocaleString();
+                    document.getElementById('offpeakAvg').textContent =
+                        Math.round(modelData.demand_statistics.offpeak_hours.mean).toLocaleString();
+
+                    // Update model info section
+                    const modelInfoHTML = `
+                        <div style="padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border-radius: 12px; margin-bottom: 1rem;">
+                            <strong style="color: var(--electric-cyan);">Model:</strong> ${modelData.model.name}
+                        </div>
+                        <div style="padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border-radius: 12px; margin-bottom: 1rem;">
+                            <strong style="color: var(--electric-cyan);">R² Score:</strong> ${(modelData.model.r2_score * 100).toFixed(2)}%
+                        </div>
+                        <div style="padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border-radius: 12px; margin-bottom: 1rem;">
+                            <strong style="color: var(--electric-cyan);">MAE:</strong> ${modelData.model.mae.toFixed(2)} kWh
+                        </div>
+                        <div style="padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border-radius: 12px; margin-bottom: 1rem;">
+                            <strong style="color: var(--electric-cyan);">RMSE:</strong> ${modelData.model.rmse.toFixed(2)} kWh
+                        </div>
+                        <div style="padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border-radius: 12px;">
+                            <strong style="color: var(--electric-cyan);">Total Features:</strong> ${modelData.model.features_count}
+                        </div>
+                    `;
+                    document.getElementById('modelInfo').innerHTML = modelInfoHTML;
+                }
+
+                // Load feature importance
+                const featureResponse = await fetch('/api/feature-importance');
+                const featureData = await featureResponse.json();
+
+                if (featureData.success) {
+                    // Take top 10 features
+                    const top10 = featureData.data.slice(0, 10);
+
+                    const ctx = document.getElementById('featureImportanceChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: top10.map(f => f.feature),
+                            datasets: [{
+                                label: 'Importance',
+                                data: top10.map(f => f.importance),
+                                backgroundColor: 'rgba(0, 245, 255, 0.6)',
+                                borderColor: 'rgba(0, 245, 255, 1)',
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    grid: {
+                                        color: 'rgba(255, 255, 255, 0.1)'
+                                    },
+                                    ticks: {
+                                        color: '#94A3B8'
+                                    }
+                                },
+                                y: {
+                                    grid: {
+                                        color: 'rgba(255, 255, 255, 0.05)'
+                                    },
+                                    ticks: {
+                                        color: '#94A3B8',
+                                        font: {
+                                            size: 11
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        // Load dashboard on page load
+        loadDashboard();
+    </script>
+</body>
+
+</html>
