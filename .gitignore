@@ -22,15 +22,20 @@ build/
 .DS_Store
 Thumbs.db
 
-# Project specific
-*.pkl
-*.csv
-*.png
-outputs/
-models/*.pkl
-data/*.csv
+# Environment variables
+.env
 
-# Keep model directory structure
-!models/.gitkeep
-!data/.gitkeep
-!outputs/.gitkeep
+# Project specific - Temporary outputs (regenerated)
+# Note: DO NOT exclude models/*.pkl or data/*.csv - they are needed for deployment!
+# Exception: random_forest.pkl is too large (303MB) for GitHub (100MB limit)
+models/random_forest.pkl
+
+# Logs
+*.log
+
+# Keep these directories
+!models/
+!data/
+!outputs/
+!static/
+!templates/

@@ -10,28 +10,44 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-# Load trained model
-MODEL_PATH = 'models/best_model.pkl'
-FEATURES_PATH = 'models/feature_columns.pkl'
-METADATA_PATH = 'models/metadata.pkl'
+# Configuration from environment variables
+app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+app.config['ENV'] = os.getenv('FLASK_ENV', 'production')
+
+# Load trained model - use environment variables with fallback
+MODEL_PATH = os.getenv('MODEL_PATH', 'models/best_model.pkl')
+FEATURES_PATH = os.getenv('FEATURES_PATH', 'models/feature_columns.pkl')
+METADATA_PATH = os.getenv('METADATA_PATH', 'models/metadata.pkl')
+DATA_PATH = os.getenv('DATA_PATH', 'data/electricity_demand.csv')
 
 print("=" * 70)
 print("🔋 LOADING PROFESSIONAL ML MODEL")
 print("=" * 70)
 
 try:
-    model = joblib.load(MODEL_PATH)
-    feature_columns = joblib.load(FEATURES_PATH)
-    metadata = joblib.load(METADATA_PATH)
-    
-    print(f"✅ Model loaded: {metadata['best_model']}")
-    print(f"✅ R² Score: {metadata['r2_score']:.4f}")
-    print(f"✅ Features: {len(feature_columns)}")
-    print("=" * 70)
+    if os.path.exists(MODEL_PATH):
+        model = joblib.load(MODEL_PATH)
+        feature_columns = joblib.load(FEATURES_PATH)
+        metadata = joblib.load(METADATA_PATH)
+        
+        print(f"✅ Model loaded: {metadata.get('best_model', 'Unknown')}")
+        print(f"✅ R² Score: {metadata.get('r2_score', 0):.4f}")
+        print(f"✅ Features: {len(feature_columns)}")
+        print("=" * 70)
+    else:
+        print(f"⚠️  Model files not found at {MODEL_PATH}")
+        print("⚠️  Application will run with limited functionality")
+        model = None
+        feature_columns = None
+        metadata = None
 except Exception as e:
     print(f"❌ Error loading model: {e}")
     model = None
@@ -212,7 +228,13 @@ def model_info():
     """Return professional model information"""
     try:
         # Load actual data statistics
-        data = pd.read_csv('data/electricity_demand.csv')
+        if not os.path.exists(DATA_PATH):
+            return jsonify({
+                'success': False,
+                'error': 'Data file not found'
+            }), 404
+        
+        data = pd.read_csv(DATA_PATH)
         
         # Calculate peak vs off-peak stats
         peak_data = data[data['is_peak'] == 1]
@@ -457,9 +479,13 @@ def get_recommendations():
         
         # Load actual data for baseline
         try:
-            df = pd.read_csv('data/electricity_demand.csv')
-            avg_demand = df['demand'].mean()
-            peak_avg = df[df['is_peak'] == 1]['demand'].mean()
+            if os.path.exists(DATA_PATH):
+                df = pd.read_csv(DATA_PATH)
+                avg_demand = df['demand'].mean()
+                peak_avg = df[df['is_peak'] == 1]['demand'].mean()
+            else:
+                avg_demand = 5500
+                peak_avg = 6200
         except:
             avg_demand = 5500
             peak_avg = 6200
@@ -584,7 +610,13 @@ def detect_anomalies():
     """
     try:
         # Load historical data
-        df = pd.read_csv('data/electricity_demand.csv')
+        if not os.path.exists(DATA_PATH):
+            return jsonify({
+                'success': False,
+                'error': 'Data file not found'
+            }), 404
+        
+        df = pd.read_csv(DATA_PATH)
         
         # Calculate rolling statistics (7-day window)
         df['rolling_mean'] = df['demand'].rolling(window=168, center=True).mean()
@@ -677,20 +709,27 @@ def anomalies_page():
     return render_template('anomalies.html')
 
 if __name__ == '__main__':
-
+    # Get configuration from environment
+    debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+    host = os.getenv('HOST', '0.0.0.0')
+    port = int(os.getenv('PORT', 5000))
+    
     print("\n" + "=" * 70)
     print("🌐 STARTING PROFESSIONAL ELECTRICITY FORECASTING WEB APP")
     print("=" * 70)
-    print("\n📍 Local:   http://localhost:5000")
-    print("📍 Network: Use your local IP address")
+    print(f"\n📍 Environment: {os.getenv('FLASK_ENV', 'development')}")
+    print(f"📍 Host: {host}")
+    print(f"📍 Port: {port}")
+    print(f"📍 Debug: {debug_mode}")
     print("\n💡 Features:")
     print("   ✓ Time-Series Intelligence (Lag Features)")
     print("   ✓ Rolling Averages (Trend Detection)")
     print("   ✓ Peak/Off-Peak Detection")
     print("   ✓ Indian Holiday Recognition")
     print("   ✓ Temperature Indices (AC/Heating)")
-    print("\n🎯 Professional-grade ML with 98%+ accuracy")
-    print("\nPress CTRL+C to stop the server\n")
+    print("\n🎯 Professional-grade ML with 92%+ accuracy")
+    if debug_mode:
+        print("\nPress CTRL+C to stop the server\n")
     print("=" * 70 + "\n")
     
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=debug_mode, host=host, port=port)
