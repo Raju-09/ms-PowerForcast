@@ -1,320 +1,421 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Real-time electricity demand prediction with professional ML features">
-    <title>Predict Demand - PowerForecast AI</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Real-time electricity demand prediction with professional ML features">
+  <title>Predict Demand — PowerGrid Intelligence</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body>
-    <!-- Navbar -->
-    <nav class="navbar">
-        <div class="container">
-            <div class="logo">
-                ⚡ PowerForecast AI
+
+  <input type="checkbox" id="nav-toggle" class="hamburger-check" aria-hidden="true">
+  <nav class="navbar">
+    <div class="container">
+      <a href="/" class="logo">⚡ PowerGrid Intel</a>
+      <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/predict" class="active">Predict</a></li>
+        <li><a href="/forecast">Forecast</a></li>
+        <li><a href="/anomalies">Anomalies</a></li>
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a href="/whatif">What-If</a></li>
+        <li><a href="/monitoring">Monitoring</a></li>
+        <li><a href="/api-docs">API Docs</a></li>
+        <li><a href="/status">Status</a></li>
+      </ul>
+      <label for="nav-toggle" class="hamburger-btn" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+      </label>
+    </div>
+  </nav>
+
+  <section class="container" style="padding:3.5rem 0;">
+    <h1 class="section-title">Professional Demand Forecasting</h1>
+
+    <!-- Demo mode banner (shown dynamically) -->
+    <div class="demo-banner" id="demoBanner" style="display:none;">
+      ⚠️ <strong>Demo Mode</strong> — Model not trained yet. Predictions are simulated. Run <code>python ingest_data.py &amp;&amp; python train_model.py</code> to activate the real ML model.
+    </div>
+
+    <div class="grid grid-2">
+      <!-- Input form -->
+      <div class="card">
+        <h3 style="margin-bottom:1.8rem;">📊 Input Parameters</h3>
+        <form id="predictionForm">
+          <div class="form-group">
+            <label for="date">📅 Date</label>
+            <input type="date" id="date" name="date" required>
+          </div>
+          <div class="form-group">
+            <label for="hour">🕐 Hour (0–23)</label>
+            <input type="number" id="hour" name="hour" min="0" max="23" value="12" required>
+          </div>
+          <div class="form-group">
+            <label for="temperature">🌡️ Temperature (°C)</label>
+            <input type="number" id="temperature" name="temperature" step="0.1" value="25" required>
+          </div>
+          <div class="form-group">
+            <label for="humidity">💧 Humidity (%)</label>
+            <input type="number" id="humidity" name="humidity" min="0" max="100" value="60" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%;" id="predictBtn">
+            <span id="btnText">⚡ Predict Demand</span>
+            <span id="btnLoading" class="loading" style="display:none;"></span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Result panel -->
+      <div>
+        <div class="card" style="background:linear-gradient(135deg,rgba(0,245,255,.05),rgba(0,102,255,.05));">
+          <h3 style="margin-bottom:1.5rem;">💡 Prediction Insights</h3>
+
+          <div id="resultSection" style="display:none;">
+            <!-- Gauge -->
+            <div class="gauge-wrap">
+              <svg class="gauge-svg" viewBox="0 0 220 120">
+                <defs>
+                  <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%"   stop-color="#00F5FF"/>
+                    <stop offset="100%" stop-color="#0066FF"/>
+                  </linearGradient>
+                </defs>
+                <!-- Background arc (semicircle) -->
+                <path d="M 20 110 A 90 90 0 0 1 200 110" class="gauge-track"/>
+                <!-- Filled arc -->
+                <path id="gaugeArc" d="M 20 110 A 90 90 0 0 1 200 110"
+                      class="gauge-fill"
+                      stroke-dasharray="283"
+                      stroke-dashoffset="283"/>
+                <!-- Labels -->
+                <text x="15"  y="120" class="gauge-label" text-anchor="middle">Low</text>
+                <text x="110" y="15"  class="gauge-label" text-anchor="middle">Mid</text>
+                <text x="205" y="120" class="gauge-label" text-anchor="middle">High</text>
+              </svg>
+              <div class="gauge-pct-wrap">
+                <div class="gauge-pct" id="gaugePct">—</div>
+                <div class="gauge-pct-label">of historical max</div>
+              </div>
             </div>
-            <nav>
-                <a href="/">Home</a>
-                <a href="/predict">Predict</a>
-                <a href="/forecast">Forecast</a>
-                <a href="/anomalies">Anomalies</a>
-                <a href="/dashboard">Dashboard</a>
-            </nav>
-        </div>
-    </nav>
 
-    <!-- Prediction Section -->
-    <section class="container" style="padding: 4rem 0;">
-        <h1 class="section-title">Professional Demand Forecasting</h1>
-
-        <div class="grid grid-2">
-            <!-- Input Form -->
-            <div class="card">
-                <h3 style="margin-bottom: 2rem;">📊 Input Parameters</h3>
-
-                <form id="predictionForm">
-                    <div class="form-group">
-                        <label for="date">📅 Date</label>
-                        <input type="date" id="date" name="date" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="hour">🕐 Hour (0-23)</label>
-                        <input type="number" id="hour" name="hour" min="0" max="23" value="12" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="temperature">🌡️ Temperature (°C)</label>
-                        <input type="number" id="temperature" name="temperature" step="0.1" value="25" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="humidity">💧 Humidity (%)</label>
-                        <input type="number" id="humidity" name="humidity" min="0" max="100" value="60" required>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary" style="width: 100%;">
-                        <span id="btnText">⚡ Predict Demand</span>
-                        <span id="btnLoading" class="loading" style="display: none;"></span>
-                    </button>
-                </form>
+            <!-- Animated value -->
+            <div class="result-card" style="padding:2rem 1.5rem; text-align:center;">
+              <div class="value" id="demandValue">—</div>
+              <div class="unit" style="font-size:1.5rem; color:var(--electric-cyan); font-weight:bold; margin-top:0.2rem;">MW</div>
+              <div class="label" style="font-size:0.9rem; color:var(--text-muted); margin-top:0.3rem;">Predicted Grid Load</div>
+              <div class="ci-range" id="ciRange" style="font-size:0.95rem; color:var(--electric-cyan); margin-top:0.6rem; font-family:monospace;"></div>
             </div>
 
-            <!-- Result Display -->
-            <div>
-                <div class="card"
-                    style="background: linear-gradient(135deg, rgba(0, 245, 255, 0.05), rgba(0, 102, 255, 0.05));">
-                    <h3 style="margin-bottom: 2rem;">💡 Prediction Insights</h3>
-
-                    <div id="resultSection" style="display: none;">
-                        <div class="result-card">
-                            <div class="value" id="demandValue">-</div>
-                            <div class="unit">kWh</div>
-                            <div class="label">Predicted Demand</div>
-                        </div>
-
-                        <div
-                            style="margin-top: 2rem; padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border-radius: 12px; border: 1px solid var(--glass-border);">
-                            <h4 style="color: var(--electric-cyan); margin-bottom: 1rem; font-size: 1.1rem;">📋 Input
-                                Summary</h4>
-                            <div id="inputSummary" style="color: var(--text-secondary); line-height: 2;"></div>
-                        </div>
-
-                        <div id="badgesSection"
-                            style="margin-top: 1.5rem; display: flex; gap: 0.8rem; flex-wrap: wrap; justify-content: center;">
-                            <!-- Badges will be inserted here -->
-                        </div>
-                    </div>
-
-                    <div id="placeholderSection">
-                        <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
-                            <div style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.3;">📊</div>
-                            <p style="font-size: 1.1rem;">Enter parameters and click "Predict Demand" to see results</p>
-                            <p style="font-size: 0.95rem; margin-top: 0.5rem;">Professional ML model with 98%+ accuracy
-                            </p>
-                        </div>
-                    </div>
-                </div>
+            <!-- Input summary -->
+            <div style="margin-top:1.5rem; padding:1.2rem; background:rgba(255,255,255,.02); border-radius:12px; border:1px solid var(--glass-border);">
+              <h4 style="color:var(--electric-cyan); margin-bottom:.6rem; font-size:1rem;">📋 Input Summary</h4>
+              <div id="inputSummary" style="color:var(--text-secondary); line-height:1.8; font-size:.9rem;"></div>
             </div>
-        </div>
 
-        <!-- Smart Recommendations -->
-        <div class="card mt-4" id="recommendationsCard" style="display: none;">
-            <h3 style="margin-bottom: 2rem;">💡 Smart Recommendations</h3>
-            <div id="recommendationsContainer"></div>
-        </div>
+            <!-- Badges -->
+            <div id="badgesSection" style="margin-top:1.2rem; display:flex; gap:.7rem; flex-wrap:wrap; justify-content:center;"></div>
+          </div>
 
-        <!-- Features Info -->
-        <div class="card mt-4"
-            style="background: linear-gradient(135deg, rgba(6, 255, 165, 0.05), rgba(0, 245, 255, 0.05));">
-            <h3 style="text-align: center; margin-bottom: 2rem;">🎯 How Our AI Prediction Works</h3>
-            <div class="grid grid-4">
-                <div style="text-align: center;">
-                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🧠</div>
-                    <h4 style="color: var(--electric-cyan); margin-bottom: 0.5rem; font-size: 1rem;">Time-Series
-                        Intelligence</h4>
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">Uses historical patterns with lag features
-                    </p>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⚡</div>
-                    <h4 style="color: var(--electric-cyan); margin-bottom: 0.5rem; font-size: 1rem;">Peak Detection</h4>
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">Identifies high-demand periods automatically
-                    </p>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🌡️</div>
-                    <h4 style="color: var(--electric-cyan); margin-bottom: 0.5rem; font-size: 1rem;">Weather
-                        Intelligence</h4>
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">Models AC/heating demand from temperature
-                    </p>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📅</div>
-                    <h4 style="color: var(--electric-cyan); margin-bottom: 0.5rem; font-size: 1rem;">Holiday Analysis
-                    </h4>
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">Detects Indian holidays and lowers demand
-                    </p>
-                </div>
+          <div id="placeholderSection">
+            <div style="text-align:center; padding:3rem 1rem; color:var(--text-muted);">
+              <div style="font-size:4rem; margin-bottom:1rem; opacity:.25;">📊</div>
+              <p style="font-size:1.1rem;">Enter parameters and click "Predict Demand"</p>
+              <p style="font-size:.9rem; margin-top:.5rem;">Utility-grade LightGBM model trained on PJM / AEP grid</p>
             </div>
+          </div>
         </div>
-    </section>
 
-    <!-- Footer -->
-    <footer>
-        <div class="container">
-            <p>&copy; 2024 PowerForecast AI | MS Elevate Capstone Project</p>
-            <p style="margin-top: 0.5rem;">Professional ML with Lag Features • Rolling Averages • Peak Detection</p>
+        <!-- SHAP Local explainability Waterfall -->
+        <div class="card mt-2" id="shapCard" style="display:none;">
+          <h3 style="margin-bottom:0.8rem; font-size:1.2rem;">🧠 Local SHAP Explainability (Waterfall)</h3>
+          <p style="color:var(--text-muted); font-size:.85rem; margin-bottom:1rem;">
+            Base expected grid load: <strong id="shapBaseVal" style="color:var(--text-secondary);">—</strong> MW.
+            Chart features push demand higher (red) or lower (cyan) from expected value.
+          </p>
+          <canvas id="shapWaterfallChart" height="200"></canvas>
         </div>
-    </footer>
 
-    <script>
-        // Set today's date as default
-        document.getElementById('date').valueAsDate = new Date();
+        <!-- Hourly mini chart (shown after prediction) -->
+        <div class="card mt-2" id="miniChartCard" style="display:none;">
+          <h3 style="margin-bottom:1.2rem; font-size:1.2rem;">📈 Simulated Day Profile</h3>
+          <canvas id="dayProfileChart" height="160"></canvas>
+        </div>
+      </div>
+    </div>
 
-        // Form submission
-        document.getElementById('predictionForm').addEventListener('submit', async function (e) {
-            e.preventDefault();
+    <!-- Smart Recommendations -->
+    <div class="card mt-3" id="recommendationsCard" style="display:none;">
+      <h3 style="margin-bottom:1.8rem;">💡 Smart Recommendations</h3>
+      <div id="recommendationsContainer"></div>
+    </div>
 
-            // Show loading states
-            document.getElementById('btnText').style.display = 'none';
-            document.getElementById('btnLoading').style.display = 'inline-block';
+    <!-- How it works -->
+    <div class="card mt-3" style="background:linear-gradient(135deg,rgba(6,255,165,.04),rgba(0,245,255,.04));">
+      <h3 style="text-align:center; margin-bottom:2rem;">🎯 Platform Intelligence System</h3>
+      <div class="grid grid-4">
+        <div style="text-align:center;">
+          <div style="font-size:2.2rem; margin-bottom:.5rem;">📈</div>
+          <h4 style="color:var(--electric-cyan); font-size:.95rem; margin-bottom:.4rem;">Multi-Lag Engine</h4>
+          <p style="color:var(--text-muted); font-size:.85rem;">1h, 2h, 3h, 24h, 48h, and 168h lags track historical demand scale</p>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:2.2rem; margin-bottom:.5rem;">🛡️</div>
+          <h4 style="color:var(--electric-cyan); font-size:.95rem; margin-bottom:.4rem;">Drift Guard</h4>
+          <p style="color:var(--text-muted); font-size:.85rem;">Z-score feature evaluation alerts operators to out-of-distribution data</p>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:2.2rem; margin-bottom:.5rem;">🧠</div>
+          <h4 style="color:var(--electric-cyan); font-size:.95rem; margin-bottom:.4rem;">SHAP Explainability</h4>
+          <p style="color:var(--text-muted); font-size:.85rem;">Waterfall and summary matrices explain exactly why demand fluctuates</p>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:2.2rem; margin-bottom:.5rem;">🔮</div>
+          <h4 style="color:var(--electric-cyan); font-size:.95rem; margin-bottom:.4rem;">Confidence Bands</h4>
+          <p style="color:var(--text-muted); font-size:.85rem;">Quantile regression models estimate 10th and 90th percentile bounds</p>
+        </div>
+      </div>
+    </div>
+  </section>
 
-            // Get form data
-            const formData = {
-                date: document.getElementById('date').value,
-                hour: parseInt(document.getElementById('hour').value),
-                temperature: parseFloat(document.getElementById('temperature').value),
-                humidity: parseFloat(document.getElementById('humidity').value)
-            };
+  <footer>
+    <div class="container">
+      <p>© 2026 PowerGrid Intelligence Platform | Capstone Portfolio Project</p>
+      <p style="margin-top:.5rem;">Real AEP Grid Data • LightGBM • Quantile Uncertainty • SHAP Explainers</p>
+    </div>
+  </footer>
 
-            try {
-                const response = await fetch('/api/predict', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(formData)
-                });
+  <script>
+    const MAX_DEMAND = 22000; // Real AEP reference max in MW
+    let dayChartInstance = null;
+    let shapChartInstance = null;
 
-                const data = await response.json();
+    document.getElementById('date').valueAsDate = new Date();
 
-                if (data.success) {
-                    // Show result
-                    document.getElementById('placeholderSection').style.display = 'none';
-                    document.getElementById('resultSection').style.display = 'block';
+    // Gauge arc helper (SVG path, semicircle r=90 at cx=110,cy=110)
+    function updateGauge(fraction) {
+      const arc = document.getElementById('gaugeArc');
+      const total = 283; // approx arc length of semicircle r=90
+      const dash = total * Math.min(Math.max(fraction, 0), 1);
+      arc.style.strokeDashoffset = total - dash;
+      document.getElementById('gaugePct').textContent = (fraction * 100).toFixed(1) + '%';
+    }
 
-                    // Animate the value
-                    const valueElement = document.getElementById('demandValue');
-                    let currentValue = 0;
-                    const targetValue = data.prediction;
-                    const duration = 1000;
-                    const steps = 50;
-                    const increment = targetValue / steps;
-                    const stepDuration = duration / steps;
+    // Count-up animation
+    function countUp(el, target, duration = 1000) {
+      let start = 0, steps = 60, step = 0;
+      const inc = target / steps;
+      const id = setInterval(() => {
+        step++;
+        start += inc;
+        if (step >= steps) { el.textContent = Math.round(target).toLocaleString(); clearInterval(id); }
+        else el.textContent = Math.round(start).toLocaleString();
+      }, duration / steps);
+    }
 
-                    const animate = () => {
-                        currentValue += increment;
-                        if (currentValue < targetValue) {
-                            valueElement.textContent = Math.round(currentValue).toLocaleString();
-                            setTimeout(animate, stepDuration);
-                        } else {
-                            valueElement.textContent = Math.round(targetValue).toLocaleString();
-                        }
-                    };
-                    animate();
-
-                    // Show input summary
-                    document.getElementById('inputSummary').innerHTML = `
-                        <strong>Date:</strong> ${data.input.date}<br>
-                        <strong>Time:</strong> ${String(data.input.hour).padStart(2, '0')}:00 (${data.input.day_of_week})<br>
-                        <strong>Temperature:</strong> ${data.input.temperature}°C<br>
-                        <strong>Humidity:</strong> ${data.input.humidity}%<br>
-                        <strong>Season:</strong> ${data.input.season}
-                    `;
-
-                    // Show badges
-                    const badgesHTML = [];
-
-                    if (data.input.is_weekend) {
-                        badgesHTML.push('<span class="badge" style="background: linear-gradient(135deg, #06FFA5, #00F5FF); color: #0A0E1A;">🎉 Weekend</span>');
-                    }
-
-                    // Check if peak hour (6-10 AM or 6-11 PM)
-                    const hour = data.input.hour;
-                    if ((hour >= 6 && hour <= 10) || (hour >= 18 && hour <= 23)) {
-                        badgesHTML.push('<span class="badge badge-peak">⚡ Peak Hour</span>');
-                    } else {
-                        badgesHTML.push('<span class="badge badge-offpeak">🌙 Off-Peak</span>');
-                    }
-
-                    document.getElementById('badgesSection').innerHTML = badgesHTML.join('');
-
-                    // Fetch and display recommendations
-                    fetchRecommendations(data);
-
-                } else {
-                    alert('Error: ' + data.error);
+    // SHAP Waterfall bar chart
+    function renderShapChart(baseValue, shapValues) {
+      const features = Object.keys(shapValues);
+      const values = Object.values(shapValues);
+      
+      const sortedIndices = Array.from({length: features.length}, (_, i) => i)
+        .sort((a, b) => Math.abs(values[b]) - Math.abs(values[a]))
+        .slice(0, 10);
+        
+      const sortedFeatures = sortedIndices.map(i => features[i]);
+      const sortedValues = sortedIndices.map(i => values[i]);
+      
+      const colors = sortedValues.map(v => v >= 0 ? 'rgba(255, 0, 102, 0.8)' : 'rgba(0, 245, 255, 0.8)');
+      
+      document.getElementById('shapBaseVal').textContent = Math.round(baseValue).toLocaleString();
+      document.getElementById('shapCard').style.display = 'block';
+      
+      if (shapChartInstance) shapChartInstance.destroy();
+      const ctx = document.getElementById('shapWaterfallChart').getContext('2d');
+      shapChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: sortedFeatures,
+          datasets: [{
+            label: 'SHAP Contribution (MW)',
+            data: sortedValues,
+            backgroundColor: colors,
+            borderRadius: 4
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: c => {
+                  const sign = c.raw >= 0 ? '+' : '';
+                  return `${sign}${Math.round(c.raw).toLocaleString()} MW`;
                 }
-            } catch (error) {
-                alert('Prediction failed: ' + error.message);
-            } finally {
-                // Reset button
-                document.getElementById('btnText').style.display = 'inline';
-                document.getElementById('btnLoading').style.display = 'none';
+              }
             }
-        });
-
-        // Fetch and display recommendations
-        async function fetchRecommendations(predictionData) {
-            try {
-                const response = await fetch('/api/recommendations', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        prediction: predictionData.prediction,
-                        hour: predictionData.input.hour,
-                        temperature: predictionData.input.temperature,
-                        is_weekend: predictionData.input.is_weekend,
-                        is_holiday: predictionData.input.is_holiday,
-                        is_peak: predictionData.input.is_peak
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.success && data.recommendations.length > 0) {
-                    displayRecommendations(data.recommendations);
-                    document.getElementById('recommendationsCard').style.display = 'block';
-                }
-            } catch (error) {
-                console.error('Error fetching recommendations:', error);
+          },
+          scales: {
+            x: {
+              ticks: { color: '#94A3B8' },
+              grid: { color: 'rgba(255, 255, 255, 0.05)' }
+            },
+            y: {
+              ticks: { color: '#94A3B8' },
+              grid: { display: false }
             }
+          }
         }
+      });
+    }
 
-        function displayRecommendations(recommendations) {
-            const container = document.getElementById('recommendationsContainer');
+    // Hourly profile chart
+    function renderDayChart(baseTemp, basePrediction) {
+      const labels = Array.from({length:24}, (_,i) => `${String(i).padStart(2,'0')}:00`);
+      const data = labels.map((_, h) => {
+        const hourFactor = 1 + 0.15 * np_sin_approx(h);
+        return Math.round(basePrediction * hourFactor / (1 + 0.15 * np_sin_approx(12)));
+      });
+      const peakBg = data.map((_, h) => ((h>=6&&h<=10)||(h>=17&&h<=22)) ? 'rgba(255,0,110,.7)' : 'rgba(0,245,255,.5)');
 
-            let html = '<div style="display: grid; gap: 1rem;">';
+      const card = document.getElementById('miniChartCard');
+      card.style.display = 'block';
 
-            recommendations.forEach(rec => {
-                const priorityColor = {
-                    'critical': '#FF0066',
-                    'high': '#FFA500',
-                    'medium': '#FFD700',
-                    'low': '#00F5FF'
-                }[rec.priority] || '#00F5FF';
-
-                html += `
-                    <div style="padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border-left: 4px solid ${priorityColor}; border-radius: 8px;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
-                            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                <span style="font-size: 1.5rem;">${rec.icon}</span>
-                                <div>
-                                    <h4 style="color: var(--electric-cyan); margin-bottom: 0.25rem; font-size: 1.1rem;">${rec.title}</h4>
-                                    <span style="display: inline-block; padding: 0.2rem 0.6rem; background: rgba(${priorityColor === '#FF0066' ? '255,0,102' : priorityColor === '#FFA500' ? '255,165,0' : priorityColor === '#FFD700' ? '255,215,0' : '0,245,255'},0.2); color: ${priorityColor}; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;">${rec.priority}</span>
-                                </div>
-                            </div>
-                        </div>
-                        <p style="color: var(--text-secondary); margin-bottom: 1rem;">${rec.message}</p>
-                        <div style="padding: 1rem; background: rgba(0, 0, 0, 0.2); border-radius: 6px; margin-bottom: 0.75rem;">
-                            <strong style="color: var(--electric-cyan);">Recommended Action:</strong>
-                            <p style="color: var(--text-secondary); margin-top: 0.5rem;">${rec.action}</p>
-                        </div>
-                        <div style="color: var(--text-muted); font-size: 0.9rem;">
-                            📊 Impact: ${rec.impact}
-                        </div>
-                    </div>
-                `;
-            });
-
-            html += '</div>';
-            container.innerHTML = html;
+      if (dayChartInstance) dayChartInstance.destroy();
+      const ctx = document.getElementById('dayProfileChart').getContext('2d');
+      dayChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [{ label:'Demand (MW)', data, backgroundColor: peakBg, borderRadius: 4 }] },
+        options: {
+          responsive: true,
+          plugins: { legend:{display:false}, tooltip:{callbacks:{label:c=>`${c.raw.toLocaleString()} MW`}} },
+          scales: {
+            x: { ticks:{color:'#64748B', font:{size:10}, maxRotation:0}, grid:{color:'rgba(255,255,255,.05)'} },
+            y: { ticks:{color:'#94A3B8'}, grid:{color:'rgba(255,255,255,.08)'} }
+          }
         }
-    </script>
+      });
+    }
+
+    function np_sin_approx(hour) {
+      return Math.sin(2 * Math.PI * (hour - 6) / 24);
+    }
+
+    document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      document.getElementById('btnText').style.display = 'none';
+      document.getElementById('btnLoading').style.display = 'inline-block';
+
+      const payload = {
+        date: document.getElementById('date').value,
+        hour: parseInt(document.getElementById('hour').value),
+        temperature: parseFloat(document.getElementById('temperature').value),
+        humidity: parseFloat(document.getElementById('humidity').value)
+      };
+
+      try {
+        const res = await fetch('/api/predict', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await res.json();
+
+        if (data.success) {
+          document.getElementById('demoBanner').style.display = data.demo_mode ? 'flex' : 'none';
+          document.getElementById('placeholderSection').style.display = 'none';
+          document.getElementById('resultSection').style.display = 'block';
+
+          countUp(document.getElementById('demandValue'), data.prediction);
+          updateGauge(data.prediction / MAX_DEMAND);
+
+          document.getElementById('ciRange').innerHTML = `CI: ${Math.round(data.lower_bound).toLocaleString()} – ${Math.round(data.upper_bound).toLocaleString()} MW`;
+
+          document.getElementById('inputSummary').innerHTML = `
+            <strong>Date:</strong> ${data.input.date}<br>
+            <strong>Time:</strong> ${String(data.input.hour).padStart(2,'0')}:00<br>
+            <strong>Temperature:</strong> ${data.input.temperature}°C<br>
+            <strong>Humidity:</strong> ${data.input.humidity}%<br>
+            <strong>Season:</strong> ${data.input.season}
+          `;
+
+          const badges = [];
+          if (data.input.is_weekend) badges.push('<span class="badge badge-weekend">🎉 Weekend</span>');
+          if (data.input.is_holiday) badges.push('<span class="badge badge-holiday">🏖️ Holiday</span>');
+          if (data.input.is_peak) badges.push('<span class="badge badge-peak">⚡ Peak Hour</span>');
+          else badges.push('<span class="badge badge-offpeak">🌙 Off-Peak</span>');
+
+          // Drift Badge
+          const driftColor = data.drift.status === 'Stable' ? '#06FFA5' : '#FF0066';
+          const driftEmoji = data.drift.status === 'Stable' ? '🟢' : '🔴';
+          badges.push(`<span class="badge" style="background:rgba(255,255,255,0.03); border:1px solid ${driftColor}; color:${driftColor}">${driftEmoji} Drift: ${data.drift.status}</span>`);
+
+          if (data.demo_mode) badges.push('<span class="badge badge-demo">🔬 Demo</span>');
+          document.getElementById('badgesSection').innerHTML = badges.join('');
+
+          renderDayChart(payload.temperature, data.prediction);
+          renderShapChart(data.base_value, data.shap_values);
+          fetchRecommendations(data);
+
+        } else {
+          showError(data.error || 'Prediction failed');
+        }
+      } catch(err) { showError(err.message); }
+      finally {
+        document.getElementById('btnText').style.display = 'inline';
+        document.getElementById('btnLoading').style.display = 'none';
+      }
+    });
+
+    function showError(msg) {
+      document.getElementById('placeholderSection').innerHTML = `
+        <div style="text-align:center; padding:2.5rem 1rem;">
+          <div style="font-size:3rem; margin-bottom:1rem;">❌</div>
+          <p style="color:var(--electric-pink); font-size:1rem;">${msg}</p>
+          <p style="color:var(--text-muted); font-size:.88rem; margin-top:.5rem;">Check server logs or ensure the model is trained.</p>
+        </div>
+      `;
+    }
+
+    async function fetchRecommendations(pd) {
+      try {
+        const res = await fetch('/api/recommendations', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ prediction:pd.prediction, hour:pd.input.hour, temperature:pd.input.temperature,
+            is_weekend:pd.input.is_weekend, is_holiday:pd.input.is_holiday, is_peak:pd.input.is_peak }) });
+        const data = await res.json();
+        if (data.success && data.recommendations.length > 0) {
+          displayRecommendations(data.recommendations);
+          document.getElementById('recommendationsCard').style.display = 'block';
+        }
+      } catch(_) {}
+    }
+
+    function displayRecommendations(recs) {
+      const colorMap = { critical:'#FF0066', high:'#FFA500', medium:'#FFD700', low:'#00F5FF' };
+      document.getElementById('recommendationsContainer').innerHTML =
+        '<div style="display:grid; gap:1rem;">' +
+        recs.map(r => {
+          const c = colorMap[r.priority] || '#00F5FF';
+          return `
+            <div style="padding:1.4rem; background:rgba(255,255,255,.02); border-left:4px solid ${c}; border-radius:10px;">
+              <div style="display:flex; align-items:center; gap:.7rem; margin-bottom:.8rem;">
+                <span style="font-size:1.4rem;">${r.icon}</span>
+                <div>
+                  <h4 style="color:var(--electric-cyan); font-size:1rem; margin-bottom:.2rem;">${r.title}</h4>
+                  <span style="font-size:.75rem; font-weight:700; text-transform:uppercase; color:${c}; letter-spacing:.5px;">${r.priority}</span>
+                </div>
+              </div>
+              <p style="color:var(--text-secondary); margin-bottom:.8rem; font-size:.93rem;">${r.message}</p>
+              <div style="padding:.8rem; background:rgba(0,0,0,.2); border-radius:6px; margin-bottom:.6rem;">
+                <strong style="color:var(--electric-cyan); font-size:.88rem;">Action:</strong>
+                <p style="color:var(--text-secondary); margin-top:.3rem; font-size:.9rem;">${r.action}</p>
+              </div>
+              <div style="color:var(--text-muted); font-size:.85rem;">📊 Impact: ${r.impact}</div>
+            </div>
+          `;
+        }).join('') + '</div>';
+    }
+
+    document.querySelectorAll('.nav-links a').forEach(l => l.addEventListener('click', () => { document.getElementById('nav-toggle').checked = false; }));
+  </script>
 </body>
-
 </html>

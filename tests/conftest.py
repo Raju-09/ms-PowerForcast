@@ -1,0 +1,22 @@
+"""
+pytest configuration — Flask test client fixture.
+"""
+import sys, os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import pytest
+from app import app as flask_app
+
+
+@pytest.fixture
+def app():
+    flask_app.config.update({
+        "TESTING": True,
+        "DEBUG": False,
+    })
+    yield flask_app
+
+
+@pytest.fixture
+def client(app):
+    return app.test_client()

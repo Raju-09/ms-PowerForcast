@@ -39,3 +39,12 @@ models/random_forest.pkl
 !outputs/
 !static/
 !templates/
+
+# Runtime DB and Cache
+data/predictions.db
+data/weather_cache.csv
+.pytest_cache/
+
+# Diagnostic scripts
+test_monitoring.py
+scratch/

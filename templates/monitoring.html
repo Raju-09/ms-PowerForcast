@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Model performance monitoring and retraining management dashboard">
+  <title>Model Monitoring — PowerGrid Intelligence</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <input type="checkbox" id="nav-toggle" class="hamburger-check" aria-hidden="true">
+  <nav class="navbar">
+    <div class="container">
+      <a href="/" class="logo">⚡ PowerGrid Intel</a>
+      <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/predict">Predict</a></li>
+        <li><a href="/forecast">Forecast</a></li>
+        <li><a href="/anomalies">Anomalies</a></li>
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a href="/whatif">What-If</a></li>
+        <li><a href="/monitoring" class="active">Monitoring</a></li>
+        <li><a href="/api-docs">API Docs</a></li>
+        <li><a href="/status">Status</a></li>
+      </ul>
+      <label for="nav-toggle" class="hamburger-btn" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+      </label>
+    </div>
+  </nav>
+
+  <section class="container" style="padding:3.5rem 0;">
+    <h1 class="section-title">Model Performance &amp; Monitoring</h1>
+    
+    <!-- Health Overview Cards -->
+    <div class="grid grid-4" style="margin-bottom: 2rem;">
+      <div class="card" style="text-align: center;">
+        <h4 style="color:var(--text-muted); font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.5rem;">System Status</h4>
+        <div id="statusVal" style="font-size:1.6rem; font-weight:bold; color:#06FFA5;">🟢 Healthy</div>
+        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.3rem;">Z-Score &amp; MAPE Stable</div>
+      </div>
+      
+      <div class="card" style="text-align: center;">
+        <h4 style="color:var(--text-muted); font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.5rem;">Average MAPE</h4>
+        <div id="mapeVal" style="font-size:1.6rem; font-weight:bold; color:var(--electric-cyan);">— %</div>
+        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.3rem;">Target boundary &lt; 5%</div>
+      </div>
+
+      <div class="card" style="text-align: center;">
+        <h4 style="color:var(--text-muted); font-size:0.85rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:0.5rem;">Average Drift Score</h4>
+        <div id="driftVal" style="font-size:1.6rem; font-weight:bold; color:var(--electric-cyan);">— σ</div>
+        <div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.3rem;">Warning boundary &gt; 2.5σ</div>
+      </div>
+
+      <div class="card" style="text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+        <button id="retrainBtn" class="btn btn-primary" style="width:100%; padding: 0.8rem 1rem;">🔄 Trigger Retraining</button>
+        <div id="retrainStatus" style="font-size:0.75rem; color:var(--text-muted); margin-top:0.4rem; text-align:center;">Models trained: 3 | best: LightGBM</div>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-2" style="margin-bottom: 2rem;">
+      <div class="card">
+        <h3 style="margin-bottom: 1.2rem; font-size:1.1rem; color:var(--electric-cyan);">📈 Actual vs Predicted Load (Last 50 Logs)</h3>
+        <canvas id="monitorHistoryChart" height="180"></canvas>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom: 1.2rem; font-size:1.1rem; color:var(--electric-cyan);">📉 Drift &amp; Error Trends (MAPE &amp; Z-Scores)</h3>
+        <canvas id="monitorMapeDriftChart" height="180"></canvas>
+      </div>
+    </div>
+
+    <!-- Prediction Logging / History Table -->
+    <div class="card">
+      <h3 style="margin-bottom: 1.5rem; color:var(--electric-cyan);">📋 Real-Time Prediction Log &amp; Closed-Loop Feedback</h3>
+      <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1.2rem;">
+        Provide actual demand measurements to update accuracy reports and trigger drift training logs.
+      </p>
+      
+      <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.9rem;">
+          <thead>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.1); color:var(--electric-cyan);">
+              <th style="padding:0.8rem;">ID</th>
+              <th style="padding:0.8rem;">Timestamp</th>
+              <th style="padding:0.8rem;">Pred (MW)</th>
+              <th style="padding:0.8rem;">Confidence Interval</th>
+              <th style="padding:0.8rem;">Actual (MW)</th>
+              <th style="padding:0.8rem;">MAPE (%)</th>
+              <th style="padding:0.8rem;">Drift Z-Score</th>
+              <th style="padding:0.8rem;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="logTableBody">
+            <tr>
+              <td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">Loading prediction logs...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p>© 2026 PowerGrid Intelligence Platform | Capstone Portfolio Project</p>
+      <p style="margin-top:.5rem;">Real AEP Grid Data • LightGBM • Quantile Uncertainty • SHAP Explainers</p>
+    </div>
+  </footer>
+
+  <script>
+    let historyChart = null;
+    let mapeDriftChart = null;
+
+    document.addEventListener("DOMContentLoaded", () => {
+      fetchMonitoringStats();
+      fetchLogsTable();
+      
+      document.getElementById("retrainBtn").addEventListener("click", triggerRetraining);
+    });
+
+    async function fetchMonitoringStats() {
+      try {
+        const res = await fetch("/api/monitoring");
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById("statusVal").textContent = data.system_status;
+          
+          if (data.health_ok) {
+            document.getElementById("statusVal").style.color = "#06FFA5";
+          } else {
+            document.getElementById("statusVal").style.color = "#FF0066";
+          }
+
+          document.getElementById("mapeVal").textContent = data.average_mape ? `${data.average_mape.toFixed(2)} %` : "N/A";
+          document.getElementById("driftVal").textContent = `${data.average_drift_score.toFixed(2)} σ`;
+        }
+      } catch (err) {
+        console.error("Failed to load monitoring stats:", err);
+      }
+    }
+
+    async function fetchLogsTable() {
+      try {
+        const res = await fetch("/api/monitoring/history");
+        const data = await res.json();
+        if (data.success && data.history.length > 0) {
+          renderLogs(data.history);
+          renderCharts(data.history);
+        } else {
+          document.getElementById("logTableBody").innerHTML = `
+            <tr>
+              <td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">No predictions logged yet. Make a prediction on the Predict page!</td>
+            </tr>
+          `;
+        }
+      } catch (err) {
+        document.getElementById("logTableBody").innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align:center; padding:2rem; color:var(--electric-pink);">Failed to fetch logs: ${err.message}</td>
+          </tr>
+        `;
+      }
+    }
+
+    function renderLogs(logs) {
+      const tbody = document.getElementById("logTableBody");
+      tbody.innerHTML = "";
+      
+      logs.forEach(row => {
+        const tr = document.createElement("tr");
+        tr.style.borderBottom = "1px solid rgba(255,255,255,0.05)";
+        
+        const mapeCell = row.mape !== null ? `${row.mape.toFixed(2)}%` : '<span style="color:var(--text-muted)">—</span>';
+        
+        let driftStyle = "color: #06FFA5;";
+        if (row.drift_score > 2.5) driftStyle = "color: #FF0066; font-weight:bold;";
+        else if (row.drift_score > 1.5) driftStyle = "color: #FFA500;";
+        
+        let actionCell = "";
+        let actualCell = "";
+        
+        if (row.actual !== null) {
+          actualCell = `${Math.round(row.actual).toLocaleString()}`;
+          actionCell = '<span style="color:#06FFA5; font-size:0.85rem;">Logged ✓</span>';
+        } else {
+          actualCell = `
+            <input type="number" id="act-input-${row.id}" placeholder="Actual MW" 
+                   style="width: 90px; padding: 0.3rem; font-size:0.8rem; background:rgba(0,0,0,0.3); border:1px solid var(--glass-border); border-radius:4px; color:var(--text-primary);">
+          `;
+          actionCell = `
+            <button onclick="logActualValue(${row.id})" class="btn" 
+                    style="padding: 0.3rem 0.6rem; font-size:0.75rem; background:var(--electric-cyan); color:var(--bg-dark); font-weight:bold;">Log</button>
+          `;
+        }
+
+        tr.innerHTML = `
+          <td style="padding:0.8rem; font-family:monospace; color:var(--text-muted);">${row.id}</td>
+          <td style="padding:0.8rem;">${row.timestamp}</td>
+          <td style="padding:0.8rem; font-weight:bold;">${Math.round(row.prediction).toLocaleString()}</td>
+          <td style="padding:0.8rem; font-family:monospace; font-size:0.85rem; color:var(--text-muted);">${Math.round(row.lower).toLocaleString()} – ${Math.round(row.upper).toLocaleString()}</td>
+          <td style="padding:0.8rem;" id="act-val-${row.id}">${actualCell}</td>
+          <td style="padding:0.8rem; font-family:monospace; font-weight:500;">${mapeCell}</td>
+          <td style="padding:0.8rem; font-family:monospace; ${driftStyle}">${row.drift_score.toFixed(2)}σ</td>
+          <td style="padding:0.8rem;" id="act-action-${row.id}">${actionCell}</td>
+        `;
+        
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function logActualValue(predId) {
+      const inputEl = document.getElementById(`act-input-${predId}`);
+      const actualVal = parseFloat(inputEl.value);
+      if (isNaN(actualVal) || actualVal <= 0) {
+        alert("Please enter a valid positive demand value in MW.");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/log-prediction", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: predId, actual: actualVal })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          // Refresh stats and logs
+          fetchMonitoringStats();
+          fetchLogsTable();
+        } else {
+          alert(`Error logging value: ${data.error}`);
+        }
+      } catch (err) {
+        alert(`Request failed: ${err.message}`);
+      }
+    }
+
+    function renderCharts(logs) {
+      // Sort reverse to make chronological order left-to-right
+      const chartLogs = [...logs].reverse();
+      
+      const labels = chartLogs.map(l => l.timestamp.split(" ")[1] || l.timestamp);
+      const preds = chartLogs.map(l => l.prediction);
+      const actuals = chartLogs.map(l => l.actual);
+      const mapes = chartLogs.map(l => l.mape);
+      const drifts = chartLogs.map(l => l.drift_score);
+
+      // Chart 1: Actual vs Predicted
+      if (historyChart) historyChart.destroy();
+      const ctx1 = document.getElementById("monitorHistoryChart").getContext("2d");
+      historyChart = new Chart(ctx1, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Predicted Load',
+              data: preds,
+              borderColor: '#F72585',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              tension: 0.1,
+              pointRadius: 2
+            },
+            {
+              label: 'Actual Load',
+              data: actuals,
+              borderColor: '#4CC9F0',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              borderDash: [4, 4],
+              tension: 0.1,
+              pointRadius: 2,
+              spanGaps: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: '#94A3B8' } } },
+          scales: {
+            x: { ticks: { color: '#94A3B8', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } },
+            y: { ticks: { color: '#94A3B8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+
+      // Chart 2: MAPE & Drift Trends
+      if (mapeDriftChart) mapeDriftChart.destroy();
+      const ctx2 = document.getElementById("monitorMapeDriftChart").getContext("2d");
+      mapeDriftChart = new Chart(ctx2, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Drift Score (Z-Score σ)',
+              data: drifts,
+              borderColor: '#7209B7',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              yAxisID: 'y-drift',
+              tension: 0.2
+            },
+            {
+              label: 'Error Rate (MAPE %)',
+              data: mapes,
+              borderColor: '#FFD700',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              borderDash: [2, 2],
+              yAxisID: 'y-mape',
+              tension: 0.2,
+              spanGaps: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: '#94A3B8' } } },
+          scales: {
+            x: { ticks: { color: '#94A3B8', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } },
+            'y-drift': {
+              position: 'left',
+              ticks: { color: '#94A3B8' },
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              title: { display: true, text: 'Z-score Limit (Warning > 2.5)', color: '#94A3B8' }
+            },
+            'y-mape': {
+              position: 'right',
+              ticks: { color: '#94A3B8' },
+              grid: { display: false },
+              title: { display: true, text: 'MAPE Error %', color: '#94A3B8' }
+            }
+          }
+        }
+      });
+    }
+
+    async function triggerRetraining() {
+      const btn = document.getElementById("retrainBtn");
+      const statusText = document.getElementById("retrainStatus");
+      
+      btn.disabled = true;
+      btn.textContent = "🔄 Retraining in Progress...";
+      statusText.textContent = "Triggering pipeline in background subprocess...";
+
+      try {
+        const res = await fetch("/api/retrain", { method: "POST" });
+        const data = await res.json();
+        
+        if (data.success) {
+          statusText.innerHTML = `<span style="color:#06FFA5;">✓ Retraining active (PID: ${data.pid}). Refreshing in 15 seconds.</span>`;
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.textContent = "🔄 Trigger Retraining";
+            statusText.textContent = "Retraining complete. Model updated.";
+            fetchMonitoringStats();
+            fetchLogsTable();
+          }, 15000);
+        } else {
+          btn.disabled = false;
+          btn.textContent = "🔄 Trigger Retraining";
+          statusText.innerHTML = `<span style="color:#FF0066;">Error: ${data.error}</span>`;
+        }
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = "🔄 Trigger Retraining";
+        statusText.innerHTML = `<span style="color:#FF0066;">Failed: ${err.message}</span>`;
+      }
+    }
+  </script>
+</body>
+</html>

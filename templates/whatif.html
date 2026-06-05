@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="What-If scenario comparison — compare two electricity demand predictions side-by-side">
+  <title>What-If Scenarios — PowerForecast AI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <input type="checkbox" id="nav-toggle" class="hamburger-check" aria-hidden="true">
+  <nav class="navbar">
+    <div class="container">
+      <a href="/" class="logo">⚡ PowerForecast AI</a>
+      <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/predict">Predict</a></li>
+        <li><a href="/forecast">Forecast</a></li>
+        <li><a href="/anomalies">Anomalies</a></li>
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a href="/whatif" class="active">What-If</a></li>
+        <li><a href="/api-docs">API Docs</a></li>
+        <li><a href="/status">Status</a></li>
+      </ul>
+      <label for="nav-toggle" class="hamburger-btn" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+      </label>
+    </div>
+  </nav>
+
+  <section class="container" style="padding:3.5rem 0;">
+    <h1 class="section-title">🔮 What-If Scenario Comparison</h1>
+    <p style="text-align:center; color:var(--text-secondary); font-size:1.1rem; margin-top:-1.5rem; margin-bottom:2.5rem;">
+      Compare two demand predictions side-by-side to support planning decisions
+    </p>
+
+    <!-- Demo banner -->
+    <div class="demo-banner" id="demoBanner" style="display:none;">
+      ⚠️ <strong>Demo Mode</strong> — predictions are simulated. Train the model for real results.
+    </div>
+
+    <!-- Scenario inputs -->
+    <div style="display:grid; grid-template-columns: 1fr auto 1fr; gap:1.5rem; align-items:start;">
+
+      <!-- Scenario A -->
+      <div class="card" style="border-color:rgba(0,245,255,.4);">
+        <h3 style="color:var(--electric-cyan); margin-bottom:1.5rem; text-align:center; font-size:1.3rem;">🔵 Scenario A</h3>
+        <div class="form-group">
+          <label for="a_date">📅 Date</label>
+          <input type="date" id="a_date">
+        </div>
+        <div class="form-group">
+          <label for="a_hour">🕐 Hour (0–23)</label>
+          <input type="number" id="a_hour" min="0" max="23" value="14">
+        </div>
+        <div class="form-group">
+          <label for="a_temp">🌡️ Temperature (°C)</label>
+          <input type="number" id="a_temp" step="0.1" value="25">
+        </div>
+        <div class="form-group">
+          <label for="a_hum">💧 Humidity (%)</label>
+          <input type="number" id="a_hum" min="0" max="100" value="60">
+        </div>
+        <div id="resultA" style="display:none; text-align:center; padding:1.5rem; background:rgba(0,245,255,.06); border-radius:12px; border:1px solid rgba(0,245,255,.3); margin-top:1rem;">
+          <div style="font-size:2.8rem; font-weight:900; background:var(--gradient-primary); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;" id="valA">—</div>
+          <div style="color:var(--text-secondary); font-size:1rem;">kWh</div>
+          <div id="badgesA" style="margin-top:.8rem; display:flex; gap:.5rem; flex-wrap:wrap; justify-content:center;"></div>
+          <div id="metaA" style="color:var(--text-muted); font-size:.82rem; margin-top:.8rem; line-height:1.8;"></div>
+        </div>
+      </div>
+
+      <!-- VS divider -->
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding-top:3rem; gap:.5rem;">
+        <div class="scenario-divider">VS</div>
+        <div style="color:var(--text-muted); font-size:.8rem; text-align:center;">Compare<br>Scenarios</div>
+      </div>
+
+      <!-- Scenario B -->
+      <div class="card" style="border-color:rgba(255,0,110,.4);">
+        <h3 style="color:var(--electric-pink); margin-bottom:1.5rem; text-align:center; font-size:1.3rem;">🔴 Scenario B</h3>
+        <div class="form-group">
+          <label for="b_date">📅 Date</label>
+          <input type="date" id="b_date">
+        </div>
+        <div class="form-group">
+          <label for="b_hour">🕐 Hour (0–23)</label>
+          <input type="number" id="b_hour" min="0" max="23" value="14">
+        </div>
+        <div class="form-group">
+          <label for="b_temp">🌡️ Temperature (°C)</label>
+          <input type="number" id="b_temp" step="0.1" value="38">
+        </div>
+        <div class="form-group">
+          <label for="b_hum">💧 Humidity (%)</label>
+          <input type="number" id="b_hum" min="0" max="100" value="30">
+        </div>
+        <div id="resultB" style="display:none; text-align:center; padding:1.5rem; background:rgba(255,0,110,.06); border-radius:12px; border:1px solid rgba(255,0,110,.3); margin-top:1rem;">
+          <div style="font-size:2.8rem; font-weight:900; background:var(--gradient-secondary); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;" id="valB">—</div>
+          <div style="color:var(--text-secondary); font-size:1rem;">kWh</div>
+          <div id="badgesB" style="margin-top:.8rem; display:flex; gap:.5rem; flex-wrap:wrap; justify-content:center;"></div>
+          <div id="metaB" style="color:var(--text-muted); font-size:.82rem; margin-top:.8rem; line-height:1.8;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Compare button -->
+    <div style="text-align:center; margin:2rem 0;">
+      <button class="btn btn-primary" id="compareBtn" style="padding:1.2rem 4rem; font-size:1.1rem;">
+        <span id="cBtnText">🔮 Compare Scenarios</span>
+        <span id="cBtnLoad" class="loading" style="display:none;"></span>
+      </button>
+    </div>
+
+    <!-- Comparison result -->
+    <div id="comparisonResult" style="display:none;">
+      <div class="card scale-in">
+        <h3 style="text-align:center; margin-bottom:2rem;">📊 Comparison Analysis</h3>
+
+        <!-- Difference badge -->
+        <div style="text-align:center; margin-bottom:2rem;">
+          <div id="diffBadge" class="diff-badge">—</div>
+        </div>
+
+        <!-- Bar chart -->
+        <canvas id="compareChart" height="80" style="margin-bottom:2rem;"></canvas>
+
+        <!-- Stacked bars -->
+        <div class="comparison-bar-wrap">
+          <div class="comparison-bar-label">Scenario A — <span id="barLabelA">—</span> kWh</div>
+          <div class="comparison-bar"><div class="comparison-bar-fill bar-a" id="barA" style="width:0%;"></div></div>
+        </div>
+        <div class="comparison-bar-wrap" style="margin-top:1rem;">
+          <div class="comparison-bar-label">Scenario B — <span id="barLabelB">—</span> kWh</div>
+          <div class="comparison-bar"><div class="comparison-bar-fill bar-b" id="barB" style="width:0%;"></div></div>
+        </div>
+
+        <!-- Detail table -->
+        <div id="comparisonTable" style="margin-top:2rem;"></div>
+      </div>
+    </div>
+
+    <!-- Usage tips -->
+    <div class="card mt-3" style="background:linear-gradient(135deg,rgba(6,255,165,.04),rgba(0,245,255,.04));">
+      <h3 style="text-align:center; margin-bottom:1.5rem; font-size:1.2rem;">💡 How to Use What-If Analysis</h3>
+      <div class="grid grid-3">
+        <div style="text-align:center; padding:1rem;">
+          <div style="font-size:2rem; margin-bottom:.5rem;">🌡️</div>
+          <h4 style="color:var(--electric-cyan); font-size:.95rem; margin-bottom:.4rem;">Temperature Impact</h4>
+          <p style="color:var(--text-muted); font-size:.85rem;">Compare summer peak (38°C) vs mild weather (25°C) to plan cooling demand</p>
+        </div>
+        <div style="text-align:center; padding:1rem;">
+          <div style="font-size:2rem; margin-bottom:.5rem;">📅</div>
+          <h4 style="color:var(--electric-cyan); font-size:.95rem; margin-bottom:.4rem;">Holiday vs Weekday</h4>
+          <p style="color:var(--text-muted); font-size:.85rem;">See how demand drops on holidays vs normal workdays</p>
+        </div>
+        <div style="text-align:center; padding:1rem;">
+          <div style="font-size:2rem; margin-bottom:.5rem;">⚡</div>
+          <h4 style="color:var(--electric-cyan); font-size:.95rem; margin-bottom:.4rem;">Peak vs Off-Peak</h4>
+          <p style="color:var(--text-muted); font-size:.85rem;">Compare morning peak (8 AM) vs off-peak (3 AM) for load planning</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p>© 2025 PowerForecast AI | MS Elevate Capstone Project</p>
+    </div>
+  </footer>
+
+  <script>
+    let compareChartInstance = null;
+
+    // Set default dates
+    document.getElementById('a_date').valueAsDate = new Date();
+    document.getElementById('b_date').valueAsDate = new Date();
+
+    function makeBadges(inp) {
+      const b = [];
+      if (inp.is_weekend)  b.push('<span class="badge badge-weekend" style="font-size:.75rem;">🎉 Weekend</span>');
+      if (inp.is_holiday)  b.push('<span class="badge badge-holiday" style="font-size:.75rem;">🏖️ Holiday</span>');
+      if (inp.is_peak)     b.push('<span class="badge badge-peak"    style="font-size:.75rem;">⚡ Peak</span>');
+      else                 b.push('<span class="badge badge-offpeak" style="font-size:.75rem;">🌙 Off-Peak</span>');
+      return b.join('');
+    }
+
+    function makeMeta(inp) {
+      return `${inp.day_of_week} · ${inp.season} · ${String(inp.hour).padStart(2,'0')}:00`;
+    }
+
+    document.getElementById('compareBtn').addEventListener('click', async () => {
+      document.getElementById('cBtnText').style.display = 'none';
+      document.getElementById('cBtnLoad').style.display = 'inline-block';
+
+      const payload = {
+        scenario_a: {
+          date: document.getElementById('a_date').value,
+          hour: +document.getElementById('a_hour').value,
+          temperature: +document.getElementById('a_temp').value,
+          humidity: +document.getElementById('a_hum').value
+        },
+        scenario_b: {
+          date: document.getElementById('b_date').value,
+          hour: +document.getElementById('b_hour').value,
+          temperature: +document.getElementById('b_temp').value,
+          humidity: +document.getElementById('b_hum').value
+        }
+      };
+
+      try {
+        const res  = await fetch('/api/compare', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await res.json();
+
+        if (data.success) {
+          document.getElementById('demoBanner').style.display = data.scenario_a.demo_mode ? 'flex' : 'none';
+
+          const pA = data.scenario_a.prediction;
+          const pB = data.scenario_b.prediction;
+          const cmp = data.comparison;
+
+          // Show individual results
+          document.getElementById('valA').textContent = pA.toLocaleString();
+          document.getElementById('valB').textContent = pB.toLocaleString();
+          document.getElementById('badgesA').innerHTML = makeBadges(data.scenario_a.input);
+          document.getElementById('badgesB').innerHTML = makeBadges(data.scenario_b.input);
+          document.getElementById('metaA').textContent = makeMeta(data.scenario_a.input);
+          document.getElementById('metaB').textContent = makeMeta(data.scenario_b.input);
+          document.getElementById('resultA').style.display = 'block';
+          document.getElementById('resultB').style.display = 'block';
+
+          // Comparison block
+          document.getElementById('comparisonResult').style.display = 'block';
+
+          // Diff badge
+          const sign = cmp.difference_kwh >= 0 ? '+' : '';
+          const cls  = cmp.higher_scenario === 'B' ? 'diff-higher' : (cmp.higher_scenario === 'A' ? 'diff-lower' : 'diff-equal');
+          document.getElementById('diffBadge').className = `diff-badge ${cls}`;
+          document.getElementById('diffBadge').textContent =
+            `Scenario ${cmp.higher_scenario === 'equal' ? 'A = B' : cmp.higher_scenario + ' is higher'} · ${sign}${cmp.difference_kwh.toLocaleString()} kWh (${sign}${cmp.difference_percent.toFixed(1)}%)`;
+
+          // Progress bars
+          const maxV = Math.max(pA, pB);
+          document.getElementById('barLabelA').textContent = pA.toLocaleString();
+          document.getElementById('barLabelB').textContent = pB.toLocaleString();
+          setTimeout(() => {
+            document.getElementById('barA').style.width = (pA/maxV*100) + '%';
+            document.getElementById('barB').style.width = (pB/maxV*100) + '%';
+          }, 100);
+
+          // Bar chart
+          if (compareChartInstance) compareChartInstance.destroy();
+          const ctx = document.getElementById('compareChart').getContext('2d');
+          compareChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: ['Scenario A', 'Scenario B'],
+              datasets: [{
+                label: 'Predicted Demand (kWh)',
+                data: [pA, pB],
+                backgroundColor: ['rgba(0,245,255,.6)', 'rgba(255,0,110,.6)'],
+                borderColor:     ['rgba(0,245,255,1)',  'rgba(255,0,110,1)'],
+                borderWidth: 2, borderRadius: 8
+              }]
+            },
+            options: {
+              responsive:true,
+              plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>`${c.raw.toLocaleString()} kWh`}} },
+              scales:{
+                x:{ grid:{color:'rgba(255,255,255,.05)'}, ticks:{color:'#94A3B8', font:{size:13,weight:'600'}} },
+                y:{ grid:{color:'rgba(255,255,255,.08)'}, ticks:{color:'#94A3B8'} }
+              }
+            }
+          });
+
+          // Detail table
+          const rows = [
+            ['Date',        data.scenario_a.input.date,        data.scenario_b.input.date],
+            ['Hour',        `${String(data.scenario_a.input.hour).padStart(2,'0')}:00`, `${String(data.scenario_b.input.hour).padStart(2,'0')}:00`],
+            ['Temperature', `${data.scenario_a.input.temperature}°C`, `${data.scenario_b.input.temperature}°C`],
+            ['Humidity',    `${data.scenario_a.input.humidity}%`,     `${data.scenario_b.input.humidity}%`],
+            ['Day',         data.scenario_a.input.day_of_week,  data.scenario_b.input.day_of_week],
+            ['Season',      data.scenario_a.input.season,       data.scenario_b.input.season],
+            ['Peak Hour',   data.scenario_a.input.is_peak ? '✅' : '❌', data.scenario_b.input.is_peak ? '✅' : '❌'],
+            ['Prediction',  `<strong style="color:var(--electric-cyan)">${pA.toLocaleString()} kWh</strong>`,
+                            `<strong style="color:var(--electric-pink)">${pB.toLocaleString()} kWh</strong>`],
+          ];
+          document.getElementById('comparisonTable').innerHTML = `
+            <table style="width:100%; border-collapse:collapse;">
+              <thead>
+                <tr>
+                  <th style="text-align:left; padding:.7rem 1rem; color:var(--text-muted); font-size:.82rem; text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid var(--glass-border);">Parameter</th>
+                  <th style="text-align:center; padding:.7rem 1rem; color:var(--electric-cyan); font-size:.9rem; border-bottom:1px solid var(--glass-border);">Scenario A</th>
+                  <th style="text-align:center; padding:.7rem 1rem; color:var(--electric-pink); font-size:.9rem; border-bottom:1px solid var(--glass-border);">Scenario B</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows.map((r,i)=>`
+                  <tr style="background:${i%2===0?'rgba(255,255,255,.02)':'transparent'};">
+                    <td style="padding:.65rem 1rem; color:var(--text-secondary); font-size:.9rem;">${r[0]}</td>
+                    <td style="padding:.65rem 1rem; text-align:center; color:var(--text-primary); font-size:.9rem;">${r[1]}</td>
+                    <td style="padding:.65rem 1rem; text-align:center; color:var(--text-primary); font-size:.9rem;">${r[2]}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          `;
+        } else {
+          alert('Error: ' + (data.error || 'Comparison failed'));
+        }
+      } catch(err) { alert('Error: ' + err.message); }
+      finally {
+        document.getElementById('cBtnText').style.display = 'inline';
+        document.getElementById('cBtnLoad').style.display = 'none';
+      }
+    });
+
+    document.querySelectorAll('.nav-links a').forEach(l=>l.addEventListener('click',()=>{document.getElementById('nav-toggle').checked=false;}));
+  </script>
+</body>
+</html>

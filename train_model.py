@@ -1,15 +1,21 @@
 """
 Electricity Demand Forecasting - PROFESSIONAL Model Training
-Industry-grade ML with time-series validation and advanced features
-MS Elevate Capstone Project
+Industry-grade ML with time-series validation, advanced features,
+quantile regression confidence intervals, and SHAP explainability.
 """
+import sys
+sys.stdout.reconfigure(encoding='utf-8')
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import xgboost as xgb
+import lightgbm as lgb
+import shap
 import joblib
 import os
 import warnings
@@ -21,264 +27,208 @@ plt.rcParams['figure.figsize'] = (14, 7)
 plt.rcParams['font.size'] = 10
 
 print("=" * 80)
-print("🔋 PROFESSIONAL ELECTRICITY DEMAND FORECASTING SYSTEM")
+print("🔋 POWER GRID INTELLIGENCE PLATFORM — MODEL TRAINING")
 print("=" * 80)
 
 # Load dataset
-print("\n📂 Loading professional dataset...")
-data = pd.read_csv("data/electricity_demand.csv")
+print("\n📂 Loading enriched dataset...")
+if not os.path.exists("data/aep_enriched.csv"):
+    print("❌ Error: data/aep_enriched.csv not found! Run ingest_data.py first.")
+    exit(1)
+
+data = pd.read_csv("data/aep_enriched.csv")
 print(f"✅ Loaded {len(data):,} records")
-print(f"\nDataset shape: {data.shape}")
+print(f"Dataset shape: {data.shape}")
 
-# Display columns
-print(f"\n📋 Available columns:")
-for i, col in enumerate(data.columns, 1):
-    print(f"   {i:2d}. {col}")
+# Parse Datetime
+data['Datetime'] = pd.to_datetime(data['Datetime'])
+data = data.sort_values('Datetime').reset_index(drop=True)
 
-# Display basic statistics
-print("\n📊 Dataset Statistics:")
-print(data[['demand', 'temperature', 'humidity']].describe())
-
-# Check for missing values
-missing = data.isnull().sum()
-print(f"\n🔍 Missing values:")
-if missing.sum() == 0:
-    print("   ✅ No missing values!")
-else:
-    print(missing[missing > 0])
-
-# ========================================
-# PROFESSIONAL FEATURE ENGINEERING
-# ========================================
-print("\n" + "=" * 80)
-print("⚙️ PROFESSIONAL FEATURE ENGINEERING")
-print("=" * 80)
-
-# Handle missing values from lag/rolling features
-print("\n🔧 Handling missing values from lag features...")
-# Forward fill for first few rows where lag_24 is NaN
-data = data.ffill()
-# Any remaining NaNs, fill with mean
-for col in data.columns:
-    if data[col].isnull().any():
-        data[col] = data[col].fillna(data[col].mean())
-
-print(f"✅ Missing values handled: {data.isnull().sum().sum()} remaining")
-
-# Select professional features
+# Select features
 feature_columns = [
-    # Time features
-    'hour', 'day', 'month', 'season',
-    # Binary indicators
-    'is_weekend', 'is_peak', 'is_morning_peak', 'is_evening_peak', 'is_holiday',
-    # Weather features
-    'temperature', 'humidity', 'cooling_index', 'heating_index',
-    # Time-series features (LAG - CRITICAL!)
-    'lag_1', 'lag_24',
-    # Trend features (ROLLING AVERAGE)
-    'rolling_24', 'rolling_168'
+    'temperature', 'humidity', 'precipitation', 'windspeed', 'hour', 'day', 'month', 'year', 'day_of_year',
+    'week', 'quarter', 'season', 'is_weekend', 'is_peak', 'is_morning_peak', 'is_evening_peak', 'is_night', 'is_holiday',
+    'hour_sin', 'hour_cos', 'month_sin', 'month_cos', 'doy_sin', 'doy_cos', 'cooling_degree', 'heating_degree',
+    'feels_like', 'wind_chill', 'lag_1', 'lag_2', 'lag_3', 'lag_24', 'lag_48', 'lag_168',
+    'rolling_6', 'rolling_24', 'rolling_168', 'rolling_720', 'rolling_24_std', 'rolling_168_std', 'demand_delta_1w'
 ]
 
-print(f"\n📊 Professional Features ({len(feature_columns)}):")
-feature_categories = {
-    "Time Features": ['hour', 'day', 'month', 'season'],
-    "Peak Indicators": ['is_weekend', 'is_peak', 'is_morning_peak', 'is_evening_peak'],
-    "Event Detection": ['is_holiday'],
-    "Weather": ['temperature', 'humidity', 'cooling_index', 'heating_index'],
-    "Time-Series Intelligence": ['lag_1', 'lag_24'],
-    "Trend Analysis": ['rolling_24', 'rolling_168']
-}
-
-for category, features in feature_categories.items():
-    print(f"\n   {category}:")
-    for feat in features:
-        print(f"      ✓ {feat}")
+# Ensure all feature columns exist in data
+feature_columns = [col for col in feature_columns if col in data.columns]
+print(f"\n📊 Features selected for training ({len(feature_columns)}):")
+for col in feature_columns:
+    print(f"  ✓ {col}")
 
 X = data[feature_columns]
 y = data['demand']
 
-print(f"\n✅ Feature matrix: {X.shape}")
-print(f"✅ Target vector: {y.shape}")
+# Calculate drift baseline on the entire feature set
+print("\n⚙️ Calculating drift baseline stats (mean & std)...")
+drift_baseline = {}
+for col in feature_columns:
+    drift_baseline[col] = {
+        'mean': float(X[col].mean()),
+        'std': float(X[col].std()) if X[col].std() > 0 else 1.0
+    }
+os.makedirs("models", exist_ok=True)
+joblib.dump(drift_baseline, 'models/drift_baseline.pkl')
+print("✅ Saved models/drift_baseline.pkl")
 
 # ========================================
-# TIME-BASED TRAIN-TEST SPLIT (PROFESSIONAL!)
-# ========================================
-print("\n" + "=" * 80)
-print("📊 TIME-BASED TRAIN-TEST SPLIT (No Random Shuffling!)")
-print("=" * 80)
-
-# ✅ CORRECT: Time-based split (simulates real deployment)
-split_index = int(len(data) * 0.8)
-
-X_train = X[:split_index]
-X_test = X[split_index:]
-y_train = y[:split_index]
-y_test = y[split_index:]
-
-print(f"\n✅ Training samples: {len(X_train):,} ({len(X_train)/len(data)*100:.1f}%)")
-print(f"✅ Testing samples:  {len(X_test):,} ({len(X_test)/len(data)*100:.1f}%)")
-print(f"\n🎯 Why time-based? Future data should never train past predictions!")
-print(f"   This simulates REAL-WORLD deployment scenario.")
-
-# ========================================
-# MODEL 1: Linear Regression (Baseline)
+# TIME-BASED TRAIN-TEST SPLIT
 # ========================================
 print("\n" + "=" * 80)
-print("🔹 MODEL 1: Linear Regression (Baseline)")
+print("📊 TIME-BASED TRAIN-TEST SPLIT (80% Train, 20% Test)")
 print("=" * 80)
 
-lr_model = LinearRegression()
-lr_model.fit(X_train, y_train)
-lr_pred = lr_model.predict(X_test)
+split_idx = int(len(data) * 0.8)
+X_train = X.iloc[:split_idx]
+y_train = y.iloc[:split_idx]
+X_test  = X.iloc[split_idx:]
+y_test  = y.iloc[split_idx:]
 
-lr_mae = mean_absolute_error(y_test, lr_pred)
-lr_rmse = np.sqrt(mean_squared_error(y_test, lr_pred))
-lr_r2 = r2_score(y_test, lr_pred)
-
-print(f"\n📈 Performance:")
-print(f"   MAE:  {lr_mae:.2f} kWh")
-print(f"   RMSE: {lr_rmse:.2f} kWh")
-print(f"   R² Score: {lr_r2:.4f}")
+print(f"✅ Training samples: {len(X_train):,} ({X_train.index.min()} to {X_train.index.max()})")
+print(f"✅ Testing samples:  {len(X_test):,} ({X_test.index.min()} to {X_test.index.max()})")
 
 # ========================================
-# MODEL 2: Random Forest (Primary Model)
+# TIME-SERIES CROSS-VALIDATION
 # ========================================
 print("\n" + "=" * 80)
-print("🔹 MODEL 2: Random Forest Regressor (Primary)")
+print("🔄 TIME-SERIES CROSS-VALIDATION (5 Splits)")
 print("=" * 80)
 
-rf_model = RandomForestRegressor(
-    n_estimators=500,
-    max_depth=25,
-    min_samples_split=2,
-    min_samples_leaf=1,
-    max_features='sqrt',
-    bootstrap=True,
-    oob_score=True,
-    random_state=42,
-    n_jobs=-1,
-    verbose=0
-)
+tscv = TimeSeriesSplit(n_splits=5)
+models_to_evaluate = {
+    'Linear Regression': LinearRegression(),
+    'LightGBM': lgb.LGBMRegressor(n_estimators=300, learning_rate=0.05, random_state=42, verbose=-1),
+    'XGBoost': xgb.XGBRegressor(n_estimators=300, learning_rate=0.05, max_depth=6, random_state=42)
+}
 
-print("🔄 Training Random Forest with 500 trees...")
-rf_model.fit(X_train, y_train)
-rf_pred = rf_model.predict(X_test)
+cv_results = {model_name: [] for model_name in models_to_evaluate}
 
-rf_mae = mean_absolute_error(y_test, rf_pred)
-rf_rmse = np.sqrt(mean_squared_error(y_test, rf_pred))
-rf_r2 = r2_score(y_test, rf_pred)
+for fold, (train_index, val_index) in enumerate(tscv.split(X_train)):
+    print(f"\n🌀 Fold {fold+1}:")
+    cv_X_train, cv_X_val = X_train.iloc[train_index], X_train.iloc[val_index]
+    cv_y_train, cv_y_val = y_train.iloc[train_index], y_train.iloc[val_index]
+    
+    print(f"   Train size: {len(cv_X_train):,}, Val size: {len(cv_X_val):,}")
+    
+    for name, model in models_to_evaluate.items():
+        model.fit(cv_X_train, cv_y_train)
+        pred = model.predict(cv_X_val)
+        mae = mean_absolute_error(cv_y_val, pred)
+        rmse = np.sqrt(mean_squared_error(cv_y_val, pred))
+        r2 = r2_score(cv_y_val, pred)
+        mape = np.mean(np.abs((cv_y_val - pred) / cv_y_val)) * 100
+        
+        cv_results[name].append({
+            'mae': mae, 'rmse': rmse, 'r2': r2, 'mape': mape
+        })
+        print(f"   {name:<20} | MAE: {mae:7.2f} MW | MAPE: {mape:5.2f}% | R²: {r2:6.4f}")
 
-print(f"\n📈 Performance:")
-print(f"   MAE:  {rf_mae:.2f} kWh")
-print(f"   RMSE: {rf_rmse:.2f} kWh")
-print(f"   R² Score: {rf_r2:.4f}")
-print(f"   OOB Score: {rf_model.oob_score_:.4f}")
+print("\n📊 Average CV Performance:")
+for name in models_to_evaluate:
+    avg_mae = np.mean([r['mae'] for r in cv_results[name]])
+    avg_mape = np.mean([r['mape'] for r in cv_results[name]])
+    avg_r2 = np.mean([r['r2'] for r in cv_results[name]])
+    print(f"   {name:<20} | Avg MAE: {avg_mae:7.2f} MW | Avg MAPE: {avg_mape:5.2f}% | Avg R²: {avg_r2:6.4f}")
 
 # ========================================
-# MODEL 3: Gradient Boosting (Advanced)
+# FINAL MODEL TRAINING
 # ========================================
 print("\n" + "=" * 80)
-print("🔹 MODEL 3: Gradient Boosting (Advanced)")
+print("🏆 FINAL MODEL TRAINING ON WHOLE TRAIN SET")
 print("=" * 80)
 
-gb_model = GradientBoostingRegressor(
-    n_estimators=300,
-    learning_rate=0.1,
-    max_depth=7,
-    random_state=42,
-    verbose=0
-)
+trained_models = {}
+metrics = {}
 
-print("🔄 Training Gradient Boosting...")
-gb_model.fit(X_train, y_train)
-gb_pred = gb_model.predict(X_test)
+for name, model in models_to_evaluate.items():
+    print(f"Training final {name} model...")
+    model.fit(X_train, y_train)
+    pred = model.predict(X_test)
+    
+    mae = mean_absolute_error(y_test, pred)
+    rmse = np.sqrt(mean_squared_error(y_test, pred))
+    r2 = r2_score(y_test, pred)
+    mape = np.mean(np.abs((y_test - pred) / y_test)) * 100
+    
+    metrics[name] = {'mae': mae, 'rmse': rmse, 'r2': r2, 'mape': mape}
+    trained_models[name] = model
+    print(f"   {name:<20} | Test MAE: {mae:7.2f} MW | Test MAPE: {mape:5.2f}% | Test R²: {r2:6.4f}")
 
-gb_mae = mean_absolute_error(y_test, gb_pred)
-gb_rmse = np.sqrt(mean_squared_error(y_test, gb_pred))
-gb_r2 = r2_score(y_test, gb_pred)
+# Train Quantile Regression for Confidence Intervals
+print("\n🔮 Training Quantile Models for Uncertainty (Confidence Intervals)...")
+print("   Training LightGBM 10th percentile model...")
+lgb_q10 = lgb.LGBMRegressor(objective='quantile', alpha=0.1, n_estimators=300, learning_rate=0.05, random_state=42, verbose=-1)
+lgb_q10.fit(X_train, y_train)
 
-print(f"\n📈 Performance:")
-print(f"   MAE:  {gb_mae:.2f} kWh")
-print(f"   RMSE: {gb_rmse:.2f} kWh")
-print(f"   R² Score: {gb_r2:.4f}")
+print("   Training LightGBM 90th percentile model...")
+lgb_q90 = lgb.LGBMRegressor(objective='quantile', alpha=0.9, n_estimators=300, learning_rate=0.05, random_state=42, verbose=-1)
+lgb_q90.fit(X_train, y_train)
+
+# Select best main model (based on R2 score)
+best_model_name = 'XGBoost' if metrics['XGBoost']['r2'] >= metrics['LightGBM']['r2'] else 'LightGBM'
+best_model = trained_models[best_model_name]
+print(f"\n🏆 Best Main Model Selected: {best_model_name}")
 
 # ========================================
-# FEATURE IMPORTANCE ANALYSIS
+# SHAP EXPLAINABILITY
 # ========================================
 print("\n" + "=" * 80)
-print("📊 FEATURE IMPORTANCE (Random Forest)")
+print("🧠 SHAP EXPLAINABILITY")
 print("=" * 80)
 
-feature_importance = pd.DataFrame({
-    'feature': feature_columns,
-    'importance': rf_model.feature_importances_
-}).sort_values('importance', ascending=False)
-
-print("\n🎯 Top 10 Most Important Features:")
-for idx, row in feature_importance.head(10).iterrows():
-    print(f"   {row['feature']:20s} → {row['importance']:.4f}")
+# Create TreeExplainer on the best model
+try:
+    print("Creating SHAP TreeExplainer...")
+    explainer = shap.TreeExplainer(best_model)
+    print("Computing SHAP values for a sample of 200 test instances...")
+    # Sample test data for SHAP summary
+    shap_sample_X = X_test.sample(min(200, len(X_test)), random_state=42)
+    shap_values = explainer(shap_sample_X)
+    
+    # Save SHAP assets
+    joblib.dump(explainer, 'models/shap_explainer.pkl')
+    # Save the explainer and precomputed shap values
+    joblib.dump({'shap_values': shap_values, 'sample_X': shap_sample_X}, 'models/shap_summary.pkl')
+    print("✅ SHAP explainer and summary saved successfully")
+except Exception as e:
+    print(f"⚠️ Warning: SHAP generation failed ({e}). Will fall back to on-the-fly SHAP or simplified explanations.")
 
 # ========================================
-# MODEL COMPARISON
+# SAVE ALL MODEL ARTIFACTS
 # ========================================
 print("\n" + "=" * 80)
-print("📊 MODEL PERFORMANCE COMPARISON")
+print("💾 SAVING ARTIFACTS")
 print("=" * 80)
 
-comparison = pd.DataFrame({
-    'Model': ['Linear Regression', 'Random Forest', 'Gradient Boosting'],
-    'MAE': [lr_mae, rf_mae, gb_mae],
-    'RMSE': [lr_rmse, rf_rmse, gb_rmse],
-    'R²': [lr_r2, rf_r2, gb_r2]
-})
-
-print("\n" + comparison.to_string(index=False))
-
-# Best model selection
-best_idx = comparison['R²'].idxmax()
-best_model_name = comparison.loc[best_idx, 'Model']
-best_model = rf_model if best_idx == 1 else (gb_model if best_idx == 2 else lr_model)
-
-print(f"\n🏆 Best Model: {best_model_name}")
-print(f"   R² Score: {comparison.loc[best_idx, 'R²']:.4f}")
-
-# ========================================
-# SAVE MODELS
-# ========================================
-print("\n" + "=" * 80)
-print("💾 SAVING MODELS")
-print("=" * 80)
-
-os.makedirs('models', exist_ok=True)
-
-joblib.dump(lr_model, 'models/linear_regression.pkl')
-joblib.dump(rf_model, 'models/random_forest.pkl')
-joblib.dump(gb_model, 'models/gradient_boosting.pkl')
+joblib.dump(trained_models['Linear Regression'], 'models/linear_regression.pkl')
+joblib.dump(trained_models['XGBoost'], 'models/xgboost_model.pkl')
+joblib.dump(trained_models['LightGBM'], 'models/lgbm_model.pkl')
 joblib.dump(best_model, 'models/best_model.pkl')
+joblib.dump(lgb_q10, 'models/lgbm_quantile_10.pkl')
+joblib.dump(lgb_q90, 'models/lgbm_quantile_90.pkl')
 joblib.dump(feature_columns, 'models/feature_columns.pkl')
 
 # Save model metadata
 metadata = {
     'best_model': best_model_name,
-    'r2_score': float(comparison.loc[best_idx, 'R²']),
-    'mae': float(comparison.loc[best_idx, 'MAE']),
-    'rmse': float(comparison.loc[best_idx, 'RMSE']),
+    'r2_score': float(metrics[best_model_name]['r2']),
+    'mae': float(metrics[best_model_name]['mae']),
+    'mape': float(metrics[best_model_name]['mape']),
+    'rmse': float(metrics[best_model_name]['rmse']),
     'features': feature_columns,
     'training_samples': len(X_train),
-    'test_samples': len(X_test)
+    'test_samples': len(X_test),
+    'last_updated': pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')
 }
 joblib.dump(metadata, 'models/metadata.pkl')
 
-print("✅ Saved models:")
-print("   → models/linear_regression.pkl")
-print("   → models/random_forest.pkl")
-print("   → models/gradient_boosting.pkl")
-print("   → models/best_model.pkl")
-print("   → models/feature_columns.pkl")
-print("   → models/metadata.pkl")
+print("✅ All pickle models saved in models/")
 
 # ========================================
-# PROFESSIONAL VISUALIZATIONS
+# VISUALIZATIONS
 # ========================================
 print("\n" + "=" * 80)
 print("📈 GENERATING PROFESSIONAL VISUALIZATIONS")
@@ -290,145 +240,60 @@ os.makedirs('outputs', exist_ok=True)
 plt.figure(figsize=(16, 7))
 sample_size = min(500, len(y_test))
 x_axis = range(sample_size)
+best_preds = best_model.predict(X_test.iloc[:sample_size])
+lower_preds = lgb_q10.predict(X_test.iloc[:sample_size])
+upper_preds = lgb_q90.predict(X_test.iloc[:sample_size])
 
-plt.plot(x_axis, y_test.values[:sample_size], label='Actual Demand', 
-         linewidth=2.5, alpha=0.8, color='#4CC9F0')
-plt.plot(x_axis, rf_pred[:sample_size], label=f'Predicted ({best_model_name})', 
-         linewidth=2.5, alpha=0.8, color='#F72585', linestyle='--')
+plt.plot(x_axis, y_test.iloc[:sample_size].values, label='Actual Demand', linewidth=2.0, color='#4CC9F0')
+plt.plot(x_axis, best_preds, label=f'Predicted ({best_model_name})', linewidth=2.0, color='#F72585', linestyle='--')
+plt.fill_between(x_axis, lower_preds, upper_preds, color='#7209B7', alpha=0.15, label='80% Confidence Interval')
 
-plt.xlabel('Sample Index', fontsize=12, fontweight='bold')
-plt.ylabel('Electricity Demand (kWh)', fontsize=12, fontweight='bold')
-plt.title('Professional Demand Forecasting: Actual vs Predicted', 
-          fontsize=16, fontweight='bold', pad=20)
-plt.legend(fontsize=11, loc='best')
+plt.xlabel('Sample Index (Hourly)', fontsize=12, fontweight='bold')
+plt.ylabel('Electricity Demand (MW)', fontsize=12, fontweight='bold')
+plt.title('Power Grid Demand Forecasting: Actual vs Predicted with Uncertainty Bands', fontsize=16, fontweight='bold', pad=20)
+plt.legend(fontsize=11, loc='upper right')
 plt.grid(True, alpha=0.3, linestyle='--')
 plt.tight_layout()
-plt.savefig('outputs/actual_vs_predicted.png', dpi=300, bbox_inches='tight')
+plt.savefig('outputs/actual_vs_predicted.png', dpi=150)
 print("✅ Saved: outputs/actual_vs_predicted.png")
 plt.close()
 
 # 2. Model Comparison
-plt.figure(figsize=(12, 7))
-x = np.arange(len(comparison))
-width = 0.25
+comparison_df = pd.DataFrame([
+    {'Model': name, 'MAE': details['mae'], 'MAPE (%)': details['mape'], 'R²': details['r2']}
+    for name, details in metrics.items()
+])
+print("\n" + comparison_df.to_string(index=False))
 
-fig, ax = plt.subplots(figsize=(12, 7))
-bars1 = ax.bar(x - width, comparison['MAE'], width, label='MAE', 
-               color='#FF6B6B', alpha=0.8)
-bars2 = ax.bar(x, comparison['RMSE'], width, label='RMSE', 
-               color='#4ECDC4', alpha=0.8)
-bars3 = ax.bar(x + width, comparison['R²'] * 1000, width, label='R² (×1000)', 
-               color='#45B7D1', alpha=0.8)
-
-ax.set_xlabel('Model', fontsize=12, fontweight='bold')
-ax.set_ylabel('Score', fontsize=12, fontweight='bold')
-ax.set_title('Model Performance Comparison', fontsize=16, fontweight='bold', pad=20)
-ax.set_xticks(x)
-ax.set_xticklabels(comparison['Model'])
-ax.legend(fontsize=11)
-ax.grid(True, alpha=0.3, axis='y', linestyle='--')
+plt.figure(figsize=(10, 6))
+sns.barplot(x='Model', y='MAE', data=comparison_df, palette='viridis')
+plt.title('Model MAE Comparison (Lower is Better)', fontsize=14, fontweight='bold', pad=15)
+plt.ylabel('Mean Absolute Error (MW)', fontsize=12)
 plt.tight_layout()
-plt.savefig('outputs/model_comparison.png', dpi=300, bbox_inches='tight')
+plt.savefig('outputs/model_comparison.png', dpi=150)
 print("✅ Saved: outputs/model_comparison.png")
 plt.close()
 
-# 3. Feature Importance
-plt.figure(figsize=(12, 8))
-top_features = feature_importance.head(15)
-colors = plt.cm.viridis(np.linspace(0.3, 0.9, len(top_features)))
+# 3. Feature Importance (Best Model)
+if best_model_name == 'XGBoost':
+    importances = best_model.feature_importances_
+else:
+    importances = best_model.feature_importances_
 
-plt.barh(top_features['feature'], top_features['importance'], color=colors, alpha=0.8)
-plt.xlabel('Importance Score', fontsize=12, fontweight='bold')
-plt.ylabel('Feature', fontsize=12, fontweight='bold')
-plt.title('Top 15 Feature Importances (Random Forest)', 
-          fontsize=16, fontweight='bold', pad=20)
-plt.grid(True, alpha=0.3, axis='x', linestyle='--')
+feat_imp_df = pd.DataFrame({
+    'feature': feature_columns,
+    'importance': importances
+}).sort_values('importance', ascending=False)
+
+plt.figure(figsize=(12, 8))
+sns.barplot(x='importance', y='feature', data=feat_imp_df.head(15), palette='magma')
+plt.title(f'Top 15 Feature Importances ({best_model_name})', fontsize=14, fontweight='bold', pad=15)
+plt.xlabel('Feature Importance Score')
+plt.ylabel('Feature')
 plt.tight_layout()
-plt.savefig('outputs/feature_importance.png', dpi=300, bbox_inches='tight')
+plt.savefig('outputs/feature_importance.png', dpi=150)
 print("✅ Saved: outputs/feature_importance.png")
 plt.close()
 
-# 4. Residual Plot
-plt.figure(figsize=(12, 7))
-residuals = y_test - rf_pred
-plt.scatter(rf_pred, residuals, alpha=0.5, color='#A29BFE', s=30)
-plt.axhline(y=0, color='#FF006E', linestyle='--', linewidth=2.5)
-plt.xlabel('Predicted Demand (kWh)', fontsize=12, fontweight='bold')
-plt.ylabel('Residuals (kWh)', fontsize=12, fontweight='bold')
-plt.title('Residual Analysis (Random Forest)', fontsize=16, fontweight='bold', pad=20)
-plt.grid(True, alpha=0.3, linestyle='--')
-plt.tight_layout()
-plt.savefig('outputs/residual_plot.png', dpi=300, bbox_inches='tight')
-print("✅ Saved: outputs/residual_plot.png")
-plt.close()
-
-# 5. Peak vs Off-Peak Performance
-plt.figure(figsize=(12, 7))
-test_data = data[split_index:].copy()
-test_data['predicted'] = rf_pred
-test_data['actual'] = y_test.values
-
-peak_data = test_data[test_data['is_peak'] == 1]
-offpeak_data = test_data[test_data['is_peak'] == 0]
-
-metrics = pd.DataFrame({
-    'Period': ['Peak Hours', 'Off-Peak Hours'],
-    'MAE': [
-        mean_absolute_error(peak_data['actual'], peak_data['predicted']),
-        mean_absolute_error(offpeak_data['actual'], offpeak_data['predicted'])
-    ],
-    'R²': [
-        r2_score(peak_data['actual'], peak_data['predicted']),
-        r2_score(offpeak_data['actual'], offpeak_data['predicted'])
-    ]
-})
-
-x = np.arange(len(metrics))
-width = 0.35
-
-fig, ax = plt.subplots(figsize=(12, 7))
-bars1 = ax.bar(x - width/2, metrics['MAE'], width, label='MAE', 
-               color='#FF6B6B', alpha=0.8)
-bars2 = ax.bar(x + width/2, metrics['R²'] * 1000, width, label='R² (×1000)', 
-               color='#4CC9F0', alpha=0.8)
-
-ax.set_xlabel('Time Period', fontsize=12, fontweight='bold')
-ax.set_ylabel('Score', fontsize=12, fontweight='bold')
-ax.set_title('Peak vs Off-Peak Performance Analysis', 
-             fontsize=16, fontweight='bold', pad=20)
-ax.set_xticks(x)
-ax.set_xticklabels(metrics['Period'])
-ax.legend(fontsize=11)
-ax.grid(True, alpha=0.3, axis='y', linestyle='--')
-plt.tight_layout()
-plt.savefig('outputs/peak_analysis.png', dpi=300, bbox_inches='tight')
-print("✅ Saved: outputs/peak_analysis.png")
-plt.close()
-
-# ========================================
-# SUMMARY
-# ========================================
-print("\n" + "=" * 80)
-print("✅ PROFESSIONAL ML TRAINING COMPLETE!")
-print("=" * 80)
-
-print(f"\n🎯 Key Achievements:")
-print(f"   ✓ Time-based validation (no data leakage)")
-print(f"   ✓ Lag features for time-series intelligence")
-print(f"   ✓ Rolling averages for trend detection")
-print(f"   ✓ Peak/off-peak analysis")
-print(f"   ✓ Holiday impact modeling")
-print(f"   ✓ Temperature indices (human behavior)")
-
-print(f"\n📊 Best Model Performance:")
-print(f"   Model: {best_model_name}")
-print(f"   R² Score: {comparison.loc[best_idx, 'R²']:.4f}")
-print(f"   RMSE: {comparison.loc[best_idx, 'RMSE']:.2f} kWh")
-print(f"   MAE: {comparison.loc[best_idx, 'MAE']:.2f} kWh")
-
-print(f"\n📁 Outputs:")
-print(f"   Models: models/")
-print(f"   Visualizations: outputs/")
-
-print(f"\n🚀 Ready for production deployment!")
+print("\n🎉 MODEL TRAINING PROCESS COMPLETE!")
 print("=" * 80)

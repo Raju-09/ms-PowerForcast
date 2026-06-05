@@ -10,21 +10,26 @@
 </head>
 
 <body>
-    <!-- Navbar -->
-    <nav class="navbar">
-        <div class="container">
-            <div class="logo">
-                ⚡ PowerForecast AI
-            </div>
-            <nav>
-                <a href="/">Home</a>
-                <a href="/predict">Predict</a>
-                <a href="/forecast">Forecast</a>
-                <a href="/anomalies">Anomalies</a>
-                <a href="/dashboard">Dashboard</a>
-            </nav>
-        </div>
-    </nav>
+
+  <input type="checkbox" id="nav-toggle" class="hamburger-check" aria-hidden="true">
+  <nav class="navbar">
+    <div class="container">
+      <a href="/" class="logo">⚡ PowerForecast AI</a>
+      <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/predict">Predict</a></li>
+        <li><a href="/forecast">Forecast</a></li>
+        <li><a href="/anomalies" class="active">Anomalies</a></li>
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a href="/whatif">What-If</a></li>
+        <li><a href="/api-docs">API Docs</a></li>
+        <li><a href="/status">Status</a></li>
+      </ul>
+      <label for="nav-toggle" class="hamburger-btn" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+      </label>
+    </div>
+  </nav>
 
     <!-- Hero Section -->
     <section class="container" style="padding: 4rem 0 2rem;">
@@ -338,6 +343,8 @@
                 filterAndDisplayAnomalies();
             });
         });
+
+        document.querySelectorAll('.nav-links a').forEach(l=>l.addEventListener('click',()=>{document.getElementById('nav-toggle').checked=false;}));
     </script>
 </body>
 

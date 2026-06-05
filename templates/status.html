@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="System health status and API endpoint listing for PowerForecast AI">
+  <title>System Status — PowerForecast AI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+  <input type="checkbox" id="nav-toggle" class="hamburger-check" aria-hidden="true">
+  <nav class="navbar">
+    <div class="container">
+      <a href="/" class="logo">⚡ PowerForecast AI</a>
+      <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/predict">Predict</a></li>
+        <li><a href="/forecast">Forecast</a></li>
+        <li><a href="/anomalies">Anomalies</a></li>
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a href="/whatif">What-If</a></li>
+        <li><a href="/api-docs">API Docs</a></li>
+        <li><a href="/status" class="active">Status</a></li>
+      </ul>
+      <label for="nav-toggle" class="hamburger-btn" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+      </label>
+    </div>
+  </nav>
+
+  <section class="container" style="padding:3.5rem 0;">
+    <h1 class="section-title">⚡ System Status</h1>
+    <p style="text-align:center; color:var(--text-secondary); margin-top:-1.5rem; margin-bottom:2.5rem;">
+      Real-time health monitoring — auto-refreshes every 30 seconds
+    </p>
+
+    <!-- Overall status banner -->
+    <div id="overallBanner" class="card" style="text-align:center; padding:2rem; margin-bottom:2rem; border:2px solid var(--glass-border);">
+      <div class="loading loading-lg" style="margin:0 auto;"></div>
+    </div>
+
+    <div class="grid grid-2">
+      <!-- Component health -->
+      <div class="card">
+        <h3 style="margin-bottom:1.5rem;">🔍 Component Health</h3>
+        <div id="healthItems">
+          <div style="text-align:center; padding:2rem;"><div class="loading" style="margin:0 auto;"></div></div>
+        </div>
+      </div>
+
+      <!-- System metrics -->
+      <div class="card">
+        <h3 style="margin-bottom:1.5rem;">📊 System Metrics</h3>
+        <div id="metricsItems">
+          <div style="text-align:center; padding:2rem;"><div class="loading" style="margin:0 auto;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Uptime -->
+    <div class="card mt-3" style="text-align:center; background:linear-gradient(135deg,rgba(0,245,255,.06),rgba(0,102,255,.06)); border:1px solid rgba(0,245,255,.3);">
+      <p style="color:var(--text-muted); font-size:.85rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:.5rem;">Server Uptime</p>
+      <div class="uptime-display" id="uptimeDisplay">—</div>
+    </div>
+
+    <!-- Endpoint listing -->
+    <div class="card mt-3">
+      <h3 style="margin-bottom:1.5rem;">🔗 Available Endpoints</h3>
+      <div id="endpointList">
+        <div style="text-align:center; padding:2rem;"><div class="loading" style="margin:0 auto;"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p>© 2025 PowerForecast AI | MS Elevate Capstone Project</p>
+      <p style="margin-top:.5rem; color:var(--text-muted); font-size:.82rem;" id="lastRefresh">Last refreshed: —</p>
+    </div>
+  </footer>
+
+  <script>
+    async function loadStatus() {
+      try {
+        const res  = await fetch('/api/health');
+        const data = await res.json();
+
+        // Overall banner
+        const isOk = data.model_loaded && data.data_file_present;
+        const bannerColor = isOk ? 'rgba(6,255,165,.15)' : 'rgba(255,214,10,.15)';
+        const bannerBorder = isOk ? 'rgba(6,255,165,.5)' : 'rgba(255,214,10,.5)';
+        const bannerIcon   = isOk ? '✅' : '⚠️';
+        const bannerText   = isOk ? 'All Systems Operational' : (data.demo_mode ? 'Demo Mode — Model Not Trained' : 'Degraded — Check Issues Below');
+        document.getElementById('overallBanner').style.background = bannerColor;
+        document.getElementById('overallBanner').style.borderColor = bannerBorder;
+        document.getElementById('overallBanner').innerHTML = `
+          <div style="font-size:3rem; margin-bottom:.5rem;">${bannerIcon}</div>
+          <div style="font-size:1.6rem; font-weight:800; color:${isOk?'var(--electric-green)':'var(--electric-yellow)'};">${bannerText}</div>
+          ${data.demo_mode ? '<p style="color:var(--text-muted); font-size:.88rem; margin-top:.5rem;">Run <code>python generate_sample_data.py && python train_model.py</code> to activate real ML</p>' : ''}
+        `;
+
+        // Component health
+        const items = [
+          { label:'Flask Web Server',       ok: true,                      info:'Running' },
+          { label:'ML Model',               ok: data.model_loaded,         info: data.model_loaded ? data.model_info.name : 'Not loaded — Demo Mode' },
+          { label:'Training Data File',     ok: data.data_file_present,    info: data.data_file_present ? 'Found' : 'Not found — run generate_sample_data.py' },
+          { label:'Holiday Calendar',       ok: true,                      info:'2023–2026 (50+ dates)' },
+          { label:'Feature Engineering',    ok: true,                      info:`${data.model_info.features} features` },
+          { label:'API Endpoints',          ok: true,                      info:`${data.endpoints.length} routes available` },
+        ];
+        document.getElementById('healthItems').innerHTML = items.map(i => `
+          <div class="status-item">
+            <div style="display:flex; align-items:center;">
+              <span class="status-dot ${i.ok?'ok':'warn'}"></span>
+              <span style="font-weight:600; font-size:.95rem;">${i.label}</span>
+            </div>
+            <span style="color:var(--text-muted); font-size:.85rem; text-align:right; max-width:55%;">${i.info}</span>
+          </div>
+        `).join('');
+
+        // Metrics
+        document.getElementById('uptimeDisplay').textContent = data.uptime;
+        const metrics = [
+          { label:'Total Predictions', value: data.prediction_count.toLocaleString() },
+          { label:'Last Prediction',   value: data.last_prediction || 'None yet' },
+          { label:'Model',             value: data.model_info.name },
+          { label:'R² Score',          value: data.model_info.r2_score !== null ? (data.model_info.r2_score*100).toFixed(2)+'%' : 'N/A' },
+          { label:'Mode',              value: data.demo_mode ? '🔬 Demo' : '✅ Live ML' },
+        ];
+        document.getElementById('metricsItems').innerHTML = metrics.map(m=>`
+          <div class="status-item">
+            <span style="color:var(--text-secondary); font-size:.92rem;">${m.label}</span>
+            <span style="font-weight:700; color:var(--electric-cyan); font-size:.92rem;">${m.value}</span>
+          </div>
+        `).join('');
+
+        // Endpoints
+        const methodClass = { GET:'method-get', POST:'method-post' };
+        document.getElementById('endpointList').innerHTML =
+          '<div style="display:grid; gap:.6rem;">' +
+          data.endpoints.map(ep=>`
+            <div style="display:flex; align-items:center; gap:1rem; padding:.75rem 1rem; background:rgba(255,255,255,.02); border-radius:10px; border:1px solid var(--glass-border);">
+              <span class="method-badge ${methodClass[ep.method]||'method-get'}">${ep.method}</span>
+              <code style="color:var(--electric-cyan); font-size:.9rem; flex:1;">${ep.path}</code>
+              <span style="color:var(--text-muted); font-size:.82rem; text-align:right;">${ep.description}</span>
+            </div>
+          `).join('') + '</div>';
+
+        document.getElementById('lastRefresh').textContent = 'Last refreshed: ' + new Date().toLocaleTimeString();
+
+      } catch(e) {
+        document.getElementById('overallBanner').innerHTML = `
+          <div style="font-size:3rem;">❌</div>
+          <div style="color:var(--electric-pink); font-size:1.3rem; font-weight:800;">Cannot reach server</div>
+          <p style="color:var(--text-muted); font-size:.9rem;">${e.message}</p>
+        `;
+      }
+    }
+
+    loadStatus();
+    setInterval(loadStatus, 30000);
+    document.querySelectorAll('.nav-links a').forEach(l=>l.addEventListener('click',()=>{document.getElementById('nav-toggle').checked=false;}));
+  </script>
+</body>
+</html>

@@ -3,24 +3,35 @@ setuptools>=65.0.0
 wheel>=0.38.0
 
 # Core ML Libraries
-numpy==1.24.3
-pandas==2.0.3
-scikit-learn==1.3.0
-matplotlib==3.7.2
-seaborn==0.12.2
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
 
-# Deep Learning (For LSTM models on Render)
-tensorflow==2.13.0
+# Advanced Gradient Boosting
+xgboost>=2.0.0
+lightgbm>=4.0.0
+
+# Explainable AI
+shap>=0.44.0
+
+# Holiday Detection
+holidays>=0.42
 
 # Web Framework
-Flask==2.3.2
-Flask-CORS==4.0.0
+Flask>=2.3.0
+Flask-CORS>=4.0.0
+Werkzeug>=3.0.0
+
+# HTTP Requests (weather API)
+requests>=2.31.0
 
 # Production WSGI Server
-gunicorn==21.2.0
+gunicorn>=21.2.0
 
 # Model Persistence
-joblib==1.3.1
+joblib>=1.3.0
 
 # Utilities
-python-dotenv==1.0.0
+python-dotenv>=1.0.0

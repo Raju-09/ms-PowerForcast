@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="REST API Documentation for PowerForecast AI — endpoints, schemas, and live Try-It forms">
+  <title>API Documentation — PowerForecast AI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+  <input type="checkbox" id="nav-toggle" class="hamburger-check" aria-hidden="true">
+  <nav class="navbar">
+    <div class="container">
+      <a href="/" class="logo">⚡ PowerForecast AI</a>
+      <ul class="nav-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/predict">Predict</a></li>
+        <li><a href="/forecast">Forecast</a></li>
+        <li><a href="/anomalies">Anomalies</a></li>
+        <li><a href="/dashboard">Dashboard</a></li>
+        <li><a href="/whatif">What-If</a></li>
+        <li><a href="/api-docs" class="active">API Docs</a></li>
+        <li><a href="/status">Status</a></li>
+      </ul>
+      <label for="nav-toggle" class="hamburger-btn" aria-label="Toggle navigation">
+        <span></span><span></span><span></span>
+      </label>
+    </div>
+  </nav>
+
+  <section class="container" style="padding:3.5rem 0;">
+    <h1 class="section-title">🔗 REST API Reference</h1>
+    <p style="text-align:center; color:var(--text-secondary); font-size:1.1rem; margin-top:-1.5rem; margin-bottom:1rem;">
+      PowerForecast AI — v1.0 · Base URL: <code style="color:var(--electric-cyan);">http://localhost:5000</code>
+    </p>
+    <p style="text-align:center; margin-bottom:3rem;">
+      <span class="badge badge-success">✅ All endpoints operational</span>
+      &nbsp;
+      <span style="color:var(--text-muted); font-size:.85rem;">Click an endpoint to expand docs · Use Try-It to fire live requests</span>
+    </p>
+
+    <!-- Group: Prediction -->
+    <h2 style="font-size:1.3rem; font-weight:700; color:var(--text-secondary); margin-bottom:1rem; padding-bottom:.5rem; border-bottom:1px solid var(--glass-border);">
+      🤖 Prediction Endpoints
+    </h2>
+
+    <!-- POST /api/predict -->
+    <div class="endpoint-card">
+      <div class="endpoint-header" onclick="toggle('ep1')">
+        <span class="method-badge method-post">POST</span>
+        <span class="endpoint-path">/api/predict</span>
+        <span class="endpoint-desc">Single-point demand prediction</span>
+        <span id="ep1-arrow" style="color:var(--text-muted); margin-left:.5rem;">▾</span>
+      </div>
+      <div class="endpoint-body" id="ep1">
+        <p style="color:var(--text-secondary); margin-bottom:1.2rem;">Predicts electricity demand in kWh for a given date, hour, temperature, and humidity. Works in demo mode if model is not trained.</p>
+
+        <div class="schema-label">Request Body (application/json)</div>
+        <div class="code-block">
+{<br>
+&nbsp;&nbsp;<span class="key">"date"</span>: <span class="str">"2025-08-15"</span>,&nbsp;&nbsp;&nbsp;<span class="key">// YYYY-MM-DD (required)</span><br>
+&nbsp;&nbsp;<span class="key">"hour"</span>: <span class="num">14</span>,&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">// 0–23 (required)</span><br>
+&nbsp;&nbsp;<span class="key">"temperature"</span>: <span class="num">32.5</span>,&nbsp;&nbsp;<span class="key">// °C (optional, default 25)</span><br>
+&nbsp;&nbsp;<span class="key">"humidity"</span>: <span class="num">55</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">// 0–100 % (optional, default 60)</span><br>
+}
+        </div>
+
+        <div class="schema-label">Response (200 OK)</div>
+        <div class="code-block">
+{<br>
+&nbsp;&nbsp;<span class="key">"success"</span>: <span class="bool">true</span>,<br>
+&nbsp;&nbsp;<span class="key">"prediction"</span>: <span class="num">6842.17</span>,<br>
+&nbsp;&nbsp;<span class="key">"unit"</span>: <span class="str">"kWh"</span>,<br>
+&nbsp;&nbsp;<span class="key">"demo_mode"</span>: <span class="bool">false</span>,<br>
+&nbsp;&nbsp;<span class="key">"input"</span>: { <span class="key">"date"</span>: <span class="str">"2025-08-15"</span>, <span class="key">"hour"</span>: <span class="num">14</span>, <span class="key">"day_of_week"</span>: <span class="str">"Friday"</span>, ... },<br>
+&nbsp;&nbsp;<span class="key">"model_info"</span>: { <span class="key">"name"</span>: <span class="str">"Random Forest"</span>, <span class="key">"accuracy"</span>: <span class="str">"95.3%"</span> }<br>
+}
+        </div>
+
+        <!-- Try It -->
+        <div class="try-it-panel">
+          <h5>⚡ Try It Live</h5>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:.8rem;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label style="font-size:.82rem;">Date</label>
+              <input type="date" id="try_predict_date" style="padding:.7rem; font-size:.88rem;">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label style="font-size:.82rem;">Hour</label>
+              <input type="number" id="try_predict_hour" value="14" min="0" max="23" style="padding:.7rem; font-size:.88rem;">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label style="font-size:.82rem;">Temperature (°C)</label>
+              <input type="number" id="try_predict_temp" value="30" step="0.1" style="padding:.7rem; font-size:.88rem;">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label style="font-size:.82rem;">Humidity (%)</label>
+              <input type="number" id="try_predict_hum" value="55" style="padding:.7rem; font-size:.88rem;">
+            </div>
+          </div>
+          <button class="btn btn-green" style="margin-top:1rem; padding:.8rem 2rem; font-size:.9rem;" onclick="tryPredict()">▶ Send Request</button>
+          <div class="try-result" id="try_predict_result"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- POST /api/compare -->
+    <div class="endpoint-card">
+      <div class="endpoint-header" onclick="toggle('ep2')">
+        <span class="method-badge method-post">POST</span>
+        <span class="endpoint-path">/api/compare</span>
+        <span class="endpoint-desc">Two-scenario comparison</span>
+        <span id="ep2-arrow" style="color:var(--text-muted); margin-left:.5rem;">▾</span>
+      </div>
+      <div class="endpoint-body" id="ep2">
+        <p style="color:var(--text-secondary); margin-bottom:1.2rem;">Compares two prediction scenarios and returns both predictions, the difference in kWh and percentage, and which scenario is higher.</p>
+
+        <div class="schema-label">Request Body</div>
+        <div class="code-block">
+{<br>
+&nbsp;&nbsp;<span class="key">"scenario_a"</span>: { <span class="key">"date"</span>: <span class="str">"2025-06-05"</span>, <span class="key">"hour"</span>: <span class="num">14</span>, <span class="key">"temperature"</span>: <span class="num">25</span>, <span class="key">"humidity"</span>: <span class="num">60</span> },<br>
+&nbsp;&nbsp;<span class="key">"scenario_b"</span>: { <span class="key">"date"</span>: <span class="str">"2025-06-05"</span>, <span class="key">"hour"</span>: <span class="num">14</span>, <span class="key">"temperature"</span>: <span class="num">38</span>, <span class="key">"humidity"</span>: <span class="num">30</span> }<br>
+}
+        </div>
+        <div class="schema-label">Response Fields</div>
+        <div class="code-block">
+{<br>
+&nbsp;&nbsp;<span class="key">"scenario_a"</span>: { <span class="key">"prediction"</span>: <span class="num">5720</span>, <span class="key">"input"</span>: {...} },<br>
+&nbsp;&nbsp;<span class="key">"scenario_b"</span>: { <span class="key">"prediction"</span>: <span class="num">6940</span>, <span class="key">"input"</span>: {...} },<br>
+&nbsp;&nbsp;<span class="key">"comparison"</span>: {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"difference_kwh"</span>: <span class="num">1220</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"difference_percent"</span>: <span class="num">21.3</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"higher_scenario"</span>: <span class="str">"B"</span><br>
+&nbsp;&nbsp;}<br>
+}
+        </div>
+      </div>
+    </div>
+
+    <!-- POST /api/forecast-multi -->
+    <div class="endpoint-card">
+      <div class="endpoint-header" onclick="toggle('ep3')">
+        <span class="method-badge method-post">POST</span>
+        <span class="endpoint-path">/api/forecast-multi</span>
+        <span class="endpoint-desc">Multi-step 24/48/72h forecast</span>
+        <span id="ep3-arrow" style="color:var(--text-muted); margin-left:.5rem;">▾</span>
+      </div>
+      <div class="endpoint-body" id="ep3">
+        <p style="color:var(--text-secondary); margin-bottom:1.2rem;">Generates hourly predictions for the next 24, 48, or 72 hours with confidence intervals.</p>
+        <div class="schema-label">Request Body</div>
+        <div class="code-block">
+{<br>
+&nbsp;&nbsp;<span class="key">"date"</span>: <span class="str">"2025-06-05"</span>,<br>
+&nbsp;&nbsp;<span class="key">"hour"</span>: <span class="num">0</span>,<br>
+&nbsp;&nbsp;<span class="key">"hours"</span>: <span class="num">24</span>,&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">// 24, 48 or 72</span><br>
+&nbsp;&nbsp;<span class="key">"temperature"</span>: <span class="num">28</span>,<br>
+&nbsp;&nbsp;<span class="key">"humidity"</span>: <span class="num">65</span><br>
+}
+        </div>
+        <div class="schema-label">Each Prediction Object</div>
+        <div class="code-block">
+{ <span class="key">"timestamp"</span>: <span class="str">"2025-06-05 00:00"</span>, <span class="key">"prediction"</span>: <span class="num">4120</span>,<br>
+&nbsp;&nbsp;<span class="key">"lower_bound"</span>: <span class="num">3895</span>, <span class="key">"upper_bound"</span>: <span class="num">4345</span>,<br>
+&nbsp;&nbsp;<span class="key">"is_peak"</span>: <span class="bool">false</span>, <span class="key">"temperature"</span>: <span class="num">25.1</span>, <span class="key">"humidity"</span>: <span class="num">69.8</span> }
+        </div>
+      </div>
+    </div>
+
+    <!-- Group: Intelligence -->
+    <h2 style="font-size:1.3rem; font-weight:700; color:var(--text-secondary); margin:2.5rem 0 1rem; padding-bottom:.5rem; border-bottom:1px solid var(--glass-border);">
+      💡 Intelligence Endpoints
+    </h2>
+
+    <!-- POST /api/recommendations -->
+    <div class="endpoint-card">
+      <div class="endpoint-header" onclick="toggle('ep4')">
+        <span class="method-badge method-post">POST</span>
+        <span class="endpoint-path">/api/recommendations</span>
+        <span class="endpoint-desc">Smart operational recommendations</span>
+        <span id="ep4-arrow" style="color:var(--text-muted); margin-left:.5rem;">▾</span>
+      </div>
+      <div class="endpoint-body" id="ep4">
+        <div class="schema-label">Request Body</div>
+        <div class="code-block">
+{ <span class="key">"prediction"</span>: <span class="num">6500</span>, <span class="key">"hour"</span>: <span class="num">19</span>, <span class="key">"temperature"</span>: <span class="num">36</span>,<br>
+&nbsp;&nbsp;<span class="key">"is_weekend"</span>: <span class="bool">false</span>, <span class="key">"is_holiday"</span>: <span class="bool">false</span>, <span class="key">"is_peak"</span>: <span class="bool">true</span> }
+        </div>
+        <div class="schema-label">Response — each recommendation</div>
+        <div class="code-block">
+{ <span class="key">"priority"</span>: <span class="str">"high"</span>, <span class="key">"category"</span>: <span class="str">"operational"</span>,<br>
+&nbsp;&nbsp;<span class="key">"icon"</span>: <span class="str">"⚡"</span>, <span class="key">"title"</span>: <span class="str">"High Demand Expected"</span>,<br>
+&nbsp;&nbsp;<span class="key">"message"</span>: <span class="str">"..."</span>, <span class="key">"action"</span>: <span class="str">"..."</span>, <span class="key">"impact"</span>: <span class="str">"..."</span> }
+        </div>
+      </div>
+    </div>
+
+    <!-- POST /api/detect-anomalies -->
+    <div class="endpoint-card">
+      <div class="endpoint-header" onclick="toggle('ep5')">
+        <span class="method-badge method-post">POST</span>
+        <span class="endpoint-path">/api/detect-anomalies</span>
+        <span class="endpoint-desc">Statistical anomaly detection on historical data</span>
+        <span id="ep5-arrow" style="color:var(--text-muted); margin-left:.5rem;">▾</span>
+      </div>
+      <div class="endpoint-body" id="ep5">
+        <p style="color:var(--text-secondary);">No request body required. Analyses the <code>data/electricity_demand.csv</code> file using a 7-day rolling window (2σ threshold) to identify demand spikes and drops.</p>
+        <div class="schema-label">Response Summary Fields</div>
+        <div class="code-block">
+{ <span class="key">"total_anomalies"</span>: <span class="num">42</span>, <span class="key">"critical_count"</span>: <span class="num">3</span>, <span class="key">"high_count"</span>: <span class="num">9</span>,<br>
+&nbsp;&nbsp;<span class="key">"anomalies"</span>: [{ <span class="key">"timestamp"</span>: <span class="str">"..."</span>, <span class="key">"actual_demand"</span>: <span class="num">...</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"deviation_percent"</span>: <span class="num">...</span>, <span class="key">"severity"</span>: <span class="str">"high"</span>,<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"cause"</span>: <span class="str">"..."</span>, <span class="key">"type"</span>: <span class="str">"spike"</span> }] }
+        </div>
+      </div>
+    </div>
+
+    <!-- Group: Data & Health -->
+    <h2 style="font-size:1.3rem; font-weight:700; color:var(--text-secondary); margin:2.5rem 0 1rem; padding-bottom:.5rem; border-bottom:1px solid var(--glass-border);">
+      📊 Data &amp; Health Endpoints
+    </h2>
+
+    <!-- GET /api/model-info -->
+    <div class="endpoint-card">
+      <div class="endpoint-header" onclick="toggle('ep6')">
+        <span class="method-badge method-get">GET</span>
+        <span class="endpoint-path">/api/model-info</span>
+        <span class="endpoint-desc">Model &amp; dataset statistics</span>
+        <span id="ep6-arrow" style="color:var(--text-muted); margin-left:.5rem;">▾</span>
+      </div>
+      <div class="endpoint-body" id="ep6">
+        <div class="schema-label">Response</div>
+        <div class="code-block">
+{ <span class="key">"model"</span>: { <span class="key">"name"</span>: <span class="str">"Random Forest"</span>, <span class="key">"r2_score"</span>: <span class="num">0.953</span>, <span class="key">"mae"</span>: <span class="num">148.2</span>, <span class="key">"rmse"</span>: <span class="num">201.7</span>, <span class="key">"features_count"</span>: <span class="num">17</span> },<br>
+&nbsp;&nbsp;<span class="key">"dataset"</span>: { <span class="key">"total_records"</span>: <span class="num">8760</span>, <span class="key">"date_range"</span>: <span class="str">"..."</span> },<br>
+&nbsp;&nbsp;<span class="key">"demand_statistics"</span>: { <span class="key">"overall"</span>: { <span class="key">"min"</span>: <span class="num">3200</span>, <span class="key">"max"</span>: <span class="num">8900</span>, <span class="key">"mean"</span>: <span class="num">5520</span> } } }
+        </div>
+        <!-- Try It -->
+        <div class="try-it-panel">
+          <h5>⚡ Try It Live</h5>
+          <button class="btn btn-green" style="padding:.7rem 1.8rem; font-size:.88rem;" onclick="tryGet('/api/model-info','try_model_result')">▶ GET /api/model-info</button>
+          <div class="try-result" id="try_model_result"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET /api/feature-importance -->
+    <div class="endpoint-card">
+      <div class="endpoint-header" onclick="toggle('ep7')">
+        <span class="method-badge method-get">GET</span>
+        <span class="endpoint-path">/api/feature-importance</span>
+        <span class="endpoint-desc">Feature importance scores from the model</span>
+        <span id="ep7-arrow" style="color:var(--text-muted); margin-left:.5rem;">▾</span>
+      </div>
+      <div class="endpoint-body" id="ep7">
+        <div class="schema-label">Response</div>
+        <div class="code-block">
+{ <span class="key">"data"</span>: [<br>
+&nbsp;&nbsp;{ <span class="key">"feature"</span>: <span class="str">"lag_1"</span>,  <span class="key">"importance"</span>: <span class="num">0.281</span> },<br>
+&nbsp;&nbsp;{ <span class="key">"feature"</span>: <span class="str">"lag_24"</span>, <span class="key">"importance"</span>: <span class="num">0.224</span> },<br>
+&nbsp;&nbsp;...<br>
+]}
+        </div>
+        <div class="try-it-panel">
+          <h5>⚡ Try It Live</h5>
+          <button class="btn btn-green" style="padding:.7rem 1.8rem; font-size:.88rem;" onclick="tryGet('/api/feature-importance','try_feat_result')">▶ GET /api/feature-importance</button>
+          <div class="try-result" id="try_feat_result"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GET /api/health -->
+    <div class="endpoint-card">
+      <div class="endpoint-header" onclick="toggle('ep8')">
+        <span class="method-badge method-get">GET</span>
+        <span class="endpoint-path">/api/health</span>
+        <span class="endpoint-desc">System health check</span>
+        <span id="ep8-arrow" style="color:var(--text-muted); margin-left:.5rem;">▾</span>
+      </div>
+      <div class="endpoint-body" id="ep8">
+        <div class="schema-label">Response</div>
+        <div class="code-block">
+{ <span class="key">"status"</span>: <span class="str">"healthy"</span>, <span class="key">"uptime"</span>: <span class="str">"0h 5m 12s"</span>,<br>
+&nbsp;&nbsp;<span class="key">"model_loaded"</span>: <span class="bool">true</span>, <span class="key">"data_file_present"</span>: <span class="bool">true</span>,<br>
+&nbsp;&nbsp;<span class="key">"demo_mode"</span>: <span class="bool">false</span>, <span class="key">"prediction_count"</span>: <span class="num">14</span>, ... }
+        </div>
+        <div class="try-it-panel">
+          <h5>⚡ Try It Live</h5>
+          <button class="btn btn-green" style="padding:.7rem 1.8rem; font-size:.88rem;" onclick="tryGet('/api/health','try_health_result')">▶ GET /api/health</button>
+          <div class="try-result" id="try_health_result"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <p>© 2025 PowerForecast AI | MS Elevate Capstone Project</p>
+      <p style="margin-top:.5rem;">REST API v1.0 · Flask · scikit-learn</p>
+    </div>
+  </footer>
+
+  <script>
+    // Accordion toggle
+    function toggle(id) {
+      const body  = document.getElementById(id);
+      const arrow = document.getElementById(id + '-arrow');
+      const open  = body.classList.contains('open');
+      body.classList.toggle('open');
+      if (arrow) arrow.textContent = open ? '▾' : '▴';
+    }
+
+    // Generic GET try-it
+    async function tryGet(url, resultId) {
+      const el = document.getElementById(resultId);
+      el.style.display = 'block';
+      el.style.color   = 'var(--electric-cyan)';
+      el.textContent   = 'Loading…';
+      try {
+        const res  = await fetch(url);
+        const data = await res.json();
+        el.textContent = JSON.stringify(data, null, 2);
+      } catch(e) { el.style.color='var(--electric-pink)'; el.textContent = 'Error: ' + e.message; }
+    }
+
+    // Predict try-it
+    async function tryPredict() {
+      const el = document.getElementById('try_predict_result');
+      el.style.display = 'block'; el.style.color = 'var(--electric-cyan)';
+      el.textContent   = 'Loading…';
+      try {
+        const payload = {
+          date:        document.getElementById('try_predict_date').value || new Date().toISOString().split('T')[0],
+          hour:        +document.getElementById('try_predict_hour').value,
+          temperature: +document.getElementById('try_predict_temp').value,
+          humidity:    +document.getElementById('try_predict_hum').value
+        };
+        const res  = await fetch('/api/predict', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        const data = await res.json();
+        el.textContent = JSON.stringify(data, null, 2);
+      } catch(e) { el.style.color='var(--electric-pink)'; el.textContent='Error: '+e.message; }
+    }
+
+    // Set default date
+    const d = document.getElementById('try_predict_date');
+    if (d) d.valueAsDate = new Date();
+
+    document.querySelectorAll('.nav-links a').forEach(l=>l.addEventListener('click',()=>{document.getElementById('nav-toggle').checked=false;}));
+  </script>
+</body>
+</html>
